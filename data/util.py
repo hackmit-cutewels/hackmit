@@ -7,7 +7,6 @@ from networkx.readwrite import json_graph
 GRAPH_FILE = 'graph.json'
 TOPICS_FILE = 'interests.txt'
 
-
 def find_best_matches(query: str, topics_file_path: str, top_n: int = 3, score_threshold: float = 0.5) -> list[dict]:
     """
     Finds the best matching topics for a given query from a list of topics in a file.

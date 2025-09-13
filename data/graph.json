@@ -1,0 +1,57 @@
+{
+    "directed": false,
+    "multigraph": false,
+    "graph": {},
+    "nodes": [
+        {
+            "type": "person",
+            "id": "user_01"
+        },
+        {
+            "type": "interest",
+            "id": "Classic Literature"
+        },
+        {
+            "type": "person",
+            "id": "user_02"
+        },
+        {
+            "type": "interest",
+            "id": "Ancient games"
+        },
+        {
+            "type": "interest",
+            "id": "Astronomy"
+        },
+        {
+            "type": "interest",
+            "id": "Amateur Astronomy"
+        },
+        {
+            "type": "interest",
+            "id": "Amateur astronomy"
+        }
+    ],
+    "links": [
+        {
+            "source": "user_01",
+            "target": "Classic Literature"
+        },
+        {
+            "source": "user_01",
+            "target": "Astronomy"
+        },
+        {
+            "source": "user_01",
+            "target": "Amateur Astronomy"
+        },
+        {
+            "source": "user_01",
+            "target": "Amateur astronomy"
+        },
+        {
+            "source": "user_02",
+            "target": "Ancient games"
+        }
+    ]
+}
