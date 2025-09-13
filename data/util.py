@@ -1,5 +1,12 @@
 from sentence_transformers import SentenceTransformer, util
 import torch
+import networkx as nx 
+import json
+from networkx.readwrite import json_graph
+
+GRAPH_FILE = 'graph.json'
+TOPICS_FILE = 'interests.txt'
+
 
 def find_best_matches(query: str, topics_file_path: str, top_n: int = 3, score_threshold: float = 0.5) -> list[dict]:
     """
@@ -49,28 +56,97 @@ def find_best_matches(query: str, topics_file_path: str, top_n: int = 3, score_t
     
     return matches
 
+def load_graph(file_path: str) -> nx.Graph:
+    """Loads a graph from a JSON file. If the file doesn't exist, returns a new empty graph."""
+    try:
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+        return json_graph.node_link_graph(data)
+    except FileNotFoundError:
+        print(f"Graph file not found. Creating a new graph.")
+        return nx.Graph()
+
+def save_graph(graph: nx.Graph, file_path: str):
+    """Saves a graph to a JSON file."""
+    data = json_graph.node_link_data(graph)
+    with open(file_path, 'w') as f:
+        json.dump(data, f, indent=4)
+    print(f"Graph saved to {file_path}")
+
+def add_interest_edge(graph: nx.Graph, person_id: str, interest: str):
+    """
+    Adds nodes and an edge between a person and an interest.
+    Assigns a 'type' attribute to each node for easier identification.
+    """
+    # networkx handles node creation automatically if they don't exist
+    graph.add_node(person_id, type='person')
+    graph.add_node(interest, type='interest')
+    
+    # Add the edge connecting the person to their interest
+    graph.add_edge(person_id, interest)
+    print(f"Added edge: {person_id} -> {interest}")
+
+def add_best_interest_matches(graph: nx.Graph, person_id: str, query: str, topics_file_path: str, **kwargs):
+    """
+    Finds the best matching interests for a query and adds them as edges to the person's node.
+    
+    Args:
+        graph (nx.Graph): The graph to modify.
+        person_id (str): The ID of the person.
+        query (str): The search string describing an interest.
+        topics_file_path (str): Path to the list of topics.
+        **kwargs: Optional arguments for find_best_matches (e.g., top_n=5, score_threshold=0.4).
+    """
+    print(f"\nFinding matches for '{person_id}' with query: '{query}'")
+    matches = find_best_matches(query, topics_file_path, **kwargs)
+    
+    if not matches:
+        print("No matches found above the score threshold.")
+        return
+
+    for match in matches:
+        interest_topic = match['topic']
+        add_interest_edge(graph, person_id, interest_topic)
+
 # --- Example Usage ---
 if __name__ == "__main__":
-    file_path = 'interests.txt'
+    # 1. Load the graph
+    people_graph = load_graph(GRAPH_FILE)
+    print(f"Initial nodes: {people_graph.nodes()}")
     
-    # This query is semantically close to multiple topics in our list
-    input_string = "the study of matter, energy, and the universe"
+    # 2. Add a direct, specific interest for a user 'user_01'
+    add_interest_edge(people_graph, 'user_01', 'Classic Literature')
     
-    # Get the top 3 matches with a minimum score of 0.4
-    best_matches = find_best_matches(
-        query=input_string, 
-        topics_file_path=file_path, 
-        top_n=3, 
+    # 3. Use the semantic function to find and add interests for another user 'user_02'
+    # The query "ancient empires and battles" should match "History of Ancient Rome"
+    add_best_interest_matches(
+        graph=people_graph,
+        person_id='user_02',
+        query="learning about ancient empires and battles",
+        topics_file_path=TOPICS_FILE,
+        top_n=1,
+        score_threshold=0.5
+    )
+    
+    # 4. Find multiple matches for 'user_01'
+    # The query "physics of stars and galaxies" should match multiple science topics
+    add_best_interest_matches(
+        graph=people_graph,
+        person_id='user_01',
+        query="physics of stars and galaxies",
+        topics_file_path=TOPICS_FILE,
+        top_n=3,
         score_threshold=0.4
     )
     
-    print(f"Query: '{input_string}'\n")
+    # 5. Display final state and save
+    print("\n--- Final Graph State ---")
+    print("All nodes:", people_graph.nodes(data=True))
+    print("All edges:", people_graph.edges())
+    
+    # You can check the interests of a specific person
+    if 'user_01' in people_graph:
+        print("Interests for user_01:", list(people_graph.neighbors('user_01')))
 
-    if best_matches:
-        print("Found the following matches:")
-        for match in best_matches:
-            print(f"  - Topic: {match['topic']} (Score: {match['score']})")
-    else:
-        print("No sufficiently good matches were found.")
-
-
+    # 6. Save the updated graph
+    save_graph(people_graph, GRAPH_FILE)
