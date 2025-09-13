@@ -7,6 +7,25 @@ from networkx.readwrite import json_graph
 GRAPH_FILE = 'graph.json'
 TOPICS_FILE = 'interests.txt'
 
+# ===== Basic Query Functionality (used in vis.py)
+def get_interests_for_person(graph: nx.Graph, person_id: str) -> list[str]:
+    """Returns a list of interests connected to a specific person."""
+    if person_id not in graph:
+        return []
+    # graph.neighbors(node) returns an iterator of all connected nodes
+    return [node for node in graph.neighbors(person_id) if graph.nodes[node].get('type') == 'interest']
+
+def get_people_for_interest(graph: nx.Graph, interest: str) -> list[str]:
+    """Returns a list of people connected to a specific interest."""
+    if interest not in graph:
+        return []
+    return [node for node in graph.neighbors(interest) if graph.nodes[node].get('type') == 'person']
+
+# =====
+
+
+
+
 def find_best_matches(query: str, topics_file_path: str, top_n: int = 3, score_threshold: float = 0.5) -> list[dict]:
     """
     Finds the best matching topics for a given query from a list of topics in a file.
@@ -109,15 +128,9 @@ def add_best_interest_matches(graph: nx.Graph, person_id: str, query: str, topic
 
 # --- Example Usage ---
 if __name__ == "__main__":
-    # 1. Load the graph
     people_graph = load_graph(GRAPH_FILE)
     print(f"Initial nodes: {people_graph.nodes()}")
-    
-    # 2. Add a direct, specific interest for a user 'user_01'
     add_interest_edge(people_graph, 'user_01', 'Classic Literature')
-    
-    # 3. Use the semantic function to find and add interests for another user 'user_02'
-    # The query "ancient empires and battles" should match "History of Ancient Rome"
     add_best_interest_matches(
         graph=people_graph,
         person_id='user_02',
@@ -126,9 +139,6 @@ if __name__ == "__main__":
         top_n=1,
         score_threshold=0.5
     )
-    
-    # 4. Find multiple matches for 'user_01'
-    # The query "physics of stars and galaxies" should match multiple science topics
     add_best_interest_matches(
         graph=people_graph,
         person_id='user_01',
@@ -137,15 +147,9 @@ if __name__ == "__main__":
         top_n=3,
         score_threshold=0.4
     )
-    
-    # 5. Display final state and save
     print("\n--- Final Graph State ---")
     print("All nodes:", people_graph.nodes(data=True))
     print("All edges:", people_graph.edges())
-    
-    # You can check the interests of a specific person
     if 'user_01' in people_graph:
         print("Interests for user_01:", list(people_graph.neighbors('user_01')))
-
-    # 6. Save the updated graph
     save_graph(people_graph, GRAPH_FILE)
