@@ -72,3 +72,7 @@ async def add_person_with_interest(request: AddPersonRequest):
         raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+    
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, port=1234, timeout_keep_alive=_IDLE_TIMEOUT)
