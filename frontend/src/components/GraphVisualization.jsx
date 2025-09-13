@@ -179,10 +179,10 @@ const GraphVisualization = () => {
       {/* Header */}
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold text-white mb-4 drop-shadow-lg">
-          Network Graph Visualization
+          cutewels finder
         </h1>
         <p className="text-lg text-blue-200 max-w-2xl mx-auto">
-          Interactive graph visualization with glass morphism design. Drag nodes to explore connections.
+            your interests
         </p>
       </div>
 
@@ -289,7 +289,7 @@ const GraphVisualization = () => {
               <h3 className="text-lg font-semibold text-white mb-4">API Endpoint</h3>
               <div className="bg-black/30 rounded-lg p-3 border border-white/10">
                 <code className="text-green-300 text-sm break-all">
-                  GET localhost:8000/api/graph-data
+                  GET localhost:8000/api/graph_data
                 </code>
               </div>
               <p className="text-blue-200 text-sm mt-3">

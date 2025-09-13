@@ -19,7 +19,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/api/graph-data")
+@app.get("/api/graph_data")
 def get_graph_data():
     # Create a sample graph
     G = nx.star_graph(4)
@@ -75,4 +75,4 @@ async def add_person_with_interest(request: AddPersonRequest):
     
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, port=1234, timeout_keep_alive=_IDLE_TIMEOUT)
+    uvicorn.run(app, port=1234)
