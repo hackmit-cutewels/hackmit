@@ -197,7 +197,7 @@ def lat_lon_to_meters(lat1: float, lon1: float, lat2: float, lon2: float) -> flo
 
 
 @app.post("/get_pairs_nearby_place")
-async def get_pairs_nearby_place(jaccard_threshold: float = Query(0.2, ge=0.0, le=1.0),
+def get_pairs_nearby_place(jaccard_threshold: float = Query(0.2, ge=0.0, le=1.0),
     meters_threshold: float = Query(10000, ge=0.0, le=10000.0)):
 
 
@@ -233,12 +233,7 @@ async def get_pairs_nearby_place(jaccard_threshold: float = Query(0.2, ge=0.0, l
                 results.append({
                     "person1": u,
                     "person2": v ,
-                    "person1_interests": sorted(interests1),
-                    "person2_interests": sorted(interests2),
-                    "shared_interests": sorted(shared_interests),
-                    "jaccard": round(jaccard, 6),
-                    "place_information": tmp_res,
-                    "description" : "People with similar interests and nearby places."
+                    "description": f"Shared interests: {', '.join(sorted(shared_interests))}, Distance: {', '.join([str(r['distance_meters']) + 'm' for r in tmp_res])}, Places: {', '.join([str(r['nearby_place_person_1_latlong']) + ' & ' + str(r['nearby_place_person_2_latlong']) for r in tmp_res])}",
                 })
     
     return {"pairs": results}
@@ -307,10 +302,8 @@ Return JSON ONLY, like:
 
 
 @app.get("/pairs_with_common_interest")
-def pairs(
-    threshold: float = Query(0.2, ge=0.0, le=1.0, description="Keep pairs with average(Jaccard, LLM) >= threshold"),
-    graph_file: str = Query(GRAPH_FILE),
-):
+def get_pairs_with_common_interest(threshold: float = Query(0.2, ge=0.0, le=1.0),
+          graph_file: str = Query(GRAPH_FILE)):
     pt = load_people_tags(graph_file)
     people = sorted(pt)
 
@@ -334,15 +327,15 @@ def pairs(
                 results.append({
                     "person1": person1,
                     "person2": person2,
-                    "shared_interests": sorted(t1 & t2),
-                    "jaccard": round(jaccard, 6),
-                    "llm_score": round(llm_score, 6),
-                    "average": round(avg_score, 6),
-                    "explanation": why,
+                    "description": f"Shared interests: {', '.join(sorted(shared_interests))}",
                 })
 
     results.sort(key=lambda x: (-x["average"], -x["jaccard"], x["person1"], x["person2"]))
     return {"threshold": threshold, "count": len(results), "pairs": results}
+
+@app.get("/get_pairs")
+def get_pairs():
+    return {"pairs": get_pairs_nearby_place()["pairs"] + get_pairs_with_common_interest()["pairs"]}
 
 if __name__ == "__main__":
     import uvicorn
