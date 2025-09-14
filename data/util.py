@@ -4,6 +4,7 @@ import networkx as nx
 import json
 from networkx.readwrite import json_graph
 from typing import Optional
+from geopy.distance import geodesic
 
 GRAPH_FILE = 'graph.json'
 TOPICS_FILE = 'interests.txt'
@@ -116,6 +117,7 @@ def add_place_edge(graph: nx.Graph, phone_number: Optional[str], person_id: str,
     # Add the edge connecting the person to the place
     graph.add_edge(person_id, (latitude, longitude))
     print(f"Added edge: {person_id} -> {latitude}, {longitude}")
+
 
 def add_best_interest_matches(graph: nx.Graph, person_id: str, phone_number: str, query: str, topics_file_path: str, **kwargs):
     """
