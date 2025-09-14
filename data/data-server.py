@@ -66,7 +66,7 @@ class AddPersonWithPlaceRequest(BaseModel):
     latitude: float
     longitude: float
 
-@app.post("api/add_person_with_place", response_model=AddPersonWithPlaceResponse)
+@app.post("api/add_person_with_place")
 async def add_person_with_place(request: AddPersonWithPlaceRequest):
     people_graph = load_graph(GRAPH_FILE)
     add_place_edge(
@@ -77,7 +77,7 @@ async def add_person_with_place(request: AddPersonWithPlaceRequest):
     )
     save_graph(people_graph, GRAPH_FILE)
 
-@app.post("/api/add_person_with_interest", response_model=AddPersonResponse)
+@app.post("/api/add_person_with_interest")
 async def add_person_with_interest(request: AddPersonRequest):
     people_graph = load_graph(GRAPH_FILE)
     """
