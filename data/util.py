@@ -1,5 +1,4 @@
-from sentence_transformers import SentenceTransformer, util
-import torch
+from hybrid_embedding import find_best_matches as hybrid_find_best_matches
 import networkx as nx 
 import json
 from networkx.readwrite import json_graph
@@ -26,10 +25,10 @@ def get_people_for_interest(graph: nx.Graph, interest: str) -> list[str]:
 
 
 
-
 def find_best_matches(query: str, topics_file_path: str, top_n: int = 3, score_threshold: float = 0.5) -> list[dict]:
     """
     Finds the best matching topics for a given query from a list of topics in a file.
+    Now using fast hybrid BM25 + TF-IDF search instead of sentence transformers.
 
     Args:
         query (str): The input string to match.
@@ -39,13 +38,9 @@ def find_best_matches(query: str, topics_file_path: str, top_n: int = 3, score_t
 
     Returns:
         list[dict]: A list of dictionaries, where each dict contains a 'topic' and its 'score'.
-                    Returns an empty list if no matches are found above the threshold. (At most 3 and score always at least 0.4)
+                    Returns an empty list if no matches are found above the threshold.
     """
-    # 1. Load the model (this will be cached after the first run)
-    # Use a smaller, faster model for embedding (e.g., 'all-MiniLM-L4-v2')
-    model = SentenceTransformer('all-MiniLM-L4-v2')
-
-    # 2. Read topics from the file
+    # 1. Read topics from the file
     try:
         with open(topics_file_path, 'r') as f:
             topics = [line.strip() for line in f if line.strip()]
@@ -55,26 +50,38 @@ def find_best_matches(query: str, topics_file_path: str, top_n: int = 3, score_t
         print(f"Error: Topics file not found at '{topics_file_path}'")
         return []
     
-    # 3. Generate embeddings for all topics and the query
-    topic_embeddings = model.encode(topics, convert_to_tensor=True)
-    query_embedding = model.encode(query, convert_to_tensor=True)
-
-    # 4. Compute cosine similarity between the query and all topics
-    cosine_scores = util.cos_sim(query_embedding, topic_embeddings)[0]
-
-    # 5. Find the top_n best matches
-    # We use torch.topk to get the highest k scores and their indices
-    top_results = torch.topk(cosine_scores, k=min(top_n, len(topics)))
-
-    matches = []
-    for score, idx in zip(top_results[0], top_results[1]):
-        if score.item() >= score_threshold:
-            matches.append({
-                "topic": topics[idx],
-                "score": score.item()
-            })
+    # 2. Convert topics to the document format expected by hybrid search
+    documents = []
+    for i, topic in enumerate(topics):
+        documents.append({
+            "id": i,
+            "text": topic
+        })
     
-    return matches
+    # 3. Use hybrid BM25 + TF-IDF search for matching
+    try:
+        hybrid_results = hybrid_find_best_matches(
+            query=query,
+            documents=documents,
+            top_k=min(top_n, len(topics)),
+            bm25_weight=0.4,  # Good balance for topic matching
+            tfidf_weight=0.6
+        )
+        
+        # 4. Convert results to the expected format and apply score threshold
+        matches = []
+        for result in hybrid_results:
+            if result['score'] >= score_threshold:
+                matches.append({
+                    "topic": result['document']['text'],
+                    "score": result['score']
+                })
+        
+        return matches
+        
+    except Exception as e:
+        print(f"Error during hybrid search: {e}")
+        return []
 
 def load_graph(file_path: str) -> nx.Graph:
     """Loads a graph from a JSON file. If the file doesn't exist, returns a new empty graph."""
@@ -144,10 +151,11 @@ def add_best_interest_matches(graph: nx.Graph, person_id: str, phone_number: str
 if __name__ == "__main__":
     people_graph = load_graph(GRAPH_FILE)
     print(f"Initial nodes: {people_graph.nodes()}")
-    add_interest_edge(people_graph, 'user_01', 'Classic Literature')
+    add_interest_edge(people_graph, 'user_01', None, 'Classic Literature')
     add_best_interest_matches(
         graph=people_graph,
         person_id='user_02',
+        phone_number='123-456-7890',
         query="learning about ancient empires and battles",
         topics_file_path=TOPICS_FILE,
         top_n=1,
@@ -156,6 +164,7 @@ if __name__ == "__main__":
     add_best_interest_matches(
         graph=people_graph,
         person_id='user_01',
+        phone_number='098-765-4321',
         query="physics of stars and galaxies",
         topics_file_path=TOPICS_FILE,
         top_n=3,
