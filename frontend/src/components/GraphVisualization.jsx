@@ -57,7 +57,7 @@ const GraphVisualization = () => {
   const fetchGraphData = async (userId) => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:1234/api/graph_data?user_id=${encodeURIComponent(userId)}`);
+      const response = await fetch(`/api/graph-data?user_id=${encodeURIComponent(userId)}`);
       if (!response.ok) {
         throw new Error('Failed to fetch graph data');
       }
