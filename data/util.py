@@ -104,6 +104,18 @@ def add_interest_edge(graph: nx.Graph, person_id: str, interest: str):
     graph.add_edge(person_id, interest)
     print(f"Added edge: {person_id} -> {interest}")
 
+def add_place_edge(graph: nx.Graph, person_id: str, latitude: float, longitude: float):
+    """
+    Adds a node and an edge between a person and a place.
+    Assigns a 'type' attribute to each node for easier identification.
+    """
+    graph.add_node(person_id, type='person')
+    graph.add_node((latitude, longitude), type='place') 
+    
+    # Add the edge connecting the person to the place
+    graph.add_edge(person_id, (latitude, longitude))
+    print(f"Added edge: {person_id} -> {latitude}, {longitude}")
+
 def add_best_interest_matches(graph: nx.Graph, person_id: str, query: str, topics_file_path: str, **kwargs):
     """
     Finds the best matching interests for a query and adds them as edges to the person's node.

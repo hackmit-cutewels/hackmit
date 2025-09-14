@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import networkx as nx
-from util import add_best_interest_matches,load_graph,save_graph
+from util import add_best_interest_matches, load_graph, save_graph, add_place_edge
 
 
 GRAPH_FILE = 'graph.json'
@@ -38,6 +38,32 @@ class AddPersonResponse(BaseModel):
     success: bool
     message: str
     person_id: str
+
+class AddPersonWithPlaceRequest(BaseModel):
+    person_id: str
+    latitude: float
+    longitude: float
+
+class AddPersonWithPlaceResponse(BaseModel):
+    success: bool
+    message: str
+    person_id: str
+
+@app.post("api/add_person_with_place", response_model=AddPersonWithPlaceResponse)
+async def add_person_with_place(request: AddPersonWithPlaceRequest):
+    people_graph = load_graph(GRAPH_FILE)
+    add_place_edge(
+        graph=people_graph,
+        person_id=request.person_id,
+        latitude=request.latitude,
+        longitude=request.longitude
+    )
+    save_graph(people_graph, GRAPH_FILE)
+    return AddPersonWithPlaceResponse(
+        success=True,
+        message="Person added with place successfully",
+        person_id=request.person_id
+    )
 
 @app.post("/api/add_person_with_interest", response_model=AddPersonResponse)
 async def add_person_with_interest(request: AddPersonRequest):
