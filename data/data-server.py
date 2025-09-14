@@ -199,23 +199,23 @@ def lat_lon_to_meters(lat1: float, lon1: float, lat2: float, lon2: float) -> flo
 @app.post("/get_pairs_nearby_place")
 async def get_pairs_nearby_place(jaccard_threshold: float = Query(0.2, ge=0.0, le=1.0),
     meters_threshold: float = Query(10000, ge=0.0, le=10000.0)):
+
+
     pt = load_people_tags(GRAPH_FILE)
     G = load_graph(GRAPH_FILE)
     people = sorted(pt)
-    tags = sorted({t for ts in pt.values() for t in ts})
-    B = nx.Graph()
-    B.add_nodes_from(people, bipartite="people")
-    B.add_nodes_from(tags, bipartite="tags")
-    for p, ts in pt.items():
-        for t in ts:
-            B.add_edge(p, t)
+    
     results = []
     if len(people) >= 2:
-        for u, v, s in jaccard_coefficient(B, combinations(people, 2)):
-            s = float(s)
-            if s >= jaccard_threshold:
+        for u, v in combinations(people, 2):
+            interests1 = pt[u]
+            interests2 = pt[v]
+            
+            jaccard = calculate_jaccard_coefficient(interests1, interests2)
+            if jaccard >= jaccard_threshold:
+                shared_interests = interests1 & interests2
+
                 tmp_res = []
-                t1, t2 = pt[u], pt[v]
                 places_u = {nbr for nbr in G.neighbors(u) if G.nodes[nbr].get("type") == "place"}
                 places_v = {nbr for nbr in G.neighbors(v) if G.nodes[nbr].get("type") == "place"}
                 for place_u in places_u:
@@ -232,16 +232,16 @@ async def get_pairs_nearby_place(jaccard_threshold: float = Query(0.2, ge=0.0, l
 
                 results.append({
                     "person1": u,
-                    "person2": v,
-                    "person1_interests": sorted(t1),
-                    "person2_interests": sorted(t2),
-                    "shared_interests": sorted(t1 & t2),
-                    "jaccard": round(s, 6),
+                    "person2": v ,
+                    "person1_interests": sorted(interests1),
+                    "person2_interests": sorted(interests2),
+                    "shared_interests": sorted(shared_interests),
+                    "jaccard": round(jaccard, 6),
                     "place_information": tmp_res,
                     "description" : "People with similar interests and nearby places."
                 })
-
-    return { "pairs" : results}
+    
+    return {"pairs": results}
 
 @app.get("/pairs_with_common_interest")
 def pairs(threshold: float = Query(0.2, ge=0.0, le=1.0),
