@@ -100,8 +100,36 @@ const SignupScreen = ({ onSignupSuccess, onBackToLogin }) => {
             Set API Key
           </h1>
           <p className="text-lg text-gray-600 font-serif">
-            Enter your API key and choose a user ID
+            Enter your Poke API key and choose a user ID
           </p>
+        </div>
+
+        {/* Important Information Box */}
+        <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-8">
+          <div className="flex items-start">
+            <svg className="w-6 h-6 text-blue-600 mt-1 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div className="text-sm">
+              <h3 className="font-bold text-blue-900 mb-2">Important Information:</h3>
+              <ul className="space-y-2 text-blue-800">
+                <li>
+                  <strong>User ID:</strong> The User_Id must be unique and must be used as the "API-Key" of our integration.
+                </li>
+                <li>
+                  <strong>API Key:</strong> The API_Key is the Poke-API-Key, which you can find here:{' '}
+                  <a 
+                    href="https://poke.com/settings/advanced" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-600 underline hover:text-blue-800"
+                  >
+                    https://poke.com/settings/advanced
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -116,15 +144,18 @@ const SignupScreen = ({ onSignupSuccess, onBackToLogin }) => {
               value={formData.user_id}
               onChange={handleInputChange}
               onKeyPress={handleKeyPress}
-              placeholder="Choose a user ID..."
+              placeholder="Choose a unique user ID..."
               className="w-full px-4 py-3 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent font-serif"
               autoFocus
             />
+            <p className="mt-2 text-sm text-gray-500 font-serif">
+              This must be unique and will be used as the API-Key for our integration
+            </p>
           </div>
 
           <div>
             <label htmlFor="apiKey" className="block text-sm font-medium text-gray-700 mb-2 font-serif">
-              API Key
+              Poke API Key
             </label>
             <input
               id="apiKey"
@@ -133,11 +164,19 @@ const SignupScreen = ({ onSignupSuccess, onBackToLogin }) => {
               value={formData.apiKey}
               onChange={handleInputChange}
               onKeyPress={handleKeyPress}
-              placeholder="Enter your API key..."
+              placeholder="Enter your Poke-API key..."
               className="w-full px-4 py-3 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent font-serif"
             />
             <p className="mt-2 text-sm text-gray-500 font-serif">
-              Your API key will be used to validate your account
+              Get your Poke-API-Key from{' '}
+              <a 
+                href="https://poke.com/settings/advanced" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 underline"
+              >
+                poke.com/settings/advanced
+              </a>
             </p>
           </div>
           
@@ -151,7 +190,7 @@ const SignupScreen = ({ onSignupSuccess, onBackToLogin }) => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full px-4 py-3 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-400 text-white font-medium rounded-md transition-colors duration-200 font-serif"
+              className="w-full px-4 py-3 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-400 text-white font-medium rounded-md transition-colors duration-200 font-serif cursor-pointer disabled:cursor-not-allowed"
             >
               {loading ? 'Setting API Key...' : 'Set API Key'}
             </button>
@@ -159,7 +198,7 @@ const SignupScreen = ({ onSignupSuccess, onBackToLogin }) => {
             <button
               type="button"
               onClick={onBackToLogin}
-              className="w-full px-4 py-3 text-gray-600 hover:text-gray-900 font-serif transition-colors duration-200"
+              className="w-full px-4 py-3 text-gray-600 hover:text-gray-900 font-serif transition-colors duration-200 cursor-pointer"
             >
               Back to Login
             </button>
@@ -167,7 +206,7 @@ const SignupScreen = ({ onSignupSuccess, onBackToLogin }) => {
         </form>
         
         <div className="mt-12 text-center text-gray-500 text-sm">
-          <p className="font-serif">cutewels@eth-zurich</p>
+          <img src="/NETZ-LOGO.svg" alt="NETZ Logo" className="h-8 mx-auto" />
         </div>
       </div>
     </div>
