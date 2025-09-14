@@ -42,7 +42,8 @@ def find_best_matches(query: str, topics_file_path: str, top_n: int = 3, score_t
                     Returns an empty list if no matches are found above the threshold. (At most 3 and score always at least 0.4)
     """
     # 1. Load the model (this will be cached after the first run)
-    model = SentenceTransformer('all-MiniLM-L6-v2')
+    # Use a smaller, faster model for embedding (e.g., 'all-MiniLM-L4-v2')
+    model = SentenceTransformer('all-MiniLM-L4-v2')
 
     # 2. Read topics from the file
     try:
