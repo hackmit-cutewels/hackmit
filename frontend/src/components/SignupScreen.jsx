@@ -32,7 +32,8 @@ const SignupScreen = ({ onSignupSuccess, onBackToLogin }) => {
       setLoading(true);
       setError(null);
       
-      const response = await fetch('http://localhost:1235/set_api_key', {
+      // Call the Next.js API route instead of the external endpoint
+      const response = await fetch('/api/set-api-key', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
