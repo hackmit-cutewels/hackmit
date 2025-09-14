@@ -122,5 +122,5 @@ if __name__ == "__main__":
     people_graph = load_graph(GRAPH_FILE)
     add_interest_edge(people_graph, 'diana_art', None, 'Learning')
     save_graph(people_graph, GRAPH_FILE)
-    #create_comprehensive_example()
+    create_comprehensive_example()
     

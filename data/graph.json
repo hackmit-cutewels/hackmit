@@ -5,16 +5,21 @@
     "nodes": [
         {
             "type": "person",
+            "phone_number": null,
+            "id": "diana_art"
+        },
+        {
+            "type": "interest",
+            "id": "Learning"
+        },
+        {
+            "type": "person",
             "phone_number": "555-0001",
             "id": "alice_tech"
         },
         {
             "type": "interest",
             "id": "Computer programming"
-        },
-        {
-            "type": "interest",
-            "id": "Computer activities"
         },
         {
             "type": "person",
@@ -27,7 +32,7 @@
         },
         {
             "type": "interest",
-            "id": "Soccer"
+            "id": "Competitive dance"
         },
         {
             "type": "person",
@@ -36,16 +41,11 @@
         },
         {
             "type": "interest",
-            "id": "Video gaming"
-        },
-        {
-            "type": "interest",
             "id": "Video Games"
         },
         {
-            "type": "person",
-            "phone_number": null,
-            "id": "diana_art"
+            "type": "interest",
+            "id": "Video gaming"
         },
         {
             "type": "interest",
@@ -53,7 +53,7 @@
         },
         {
             "type": "interest",
-            "id": "Arts"
+            "id": "Art collecting"
         },
         {
             "type": "person",
@@ -75,12 +75,16 @@
         },
         {
             "type": "interest",
-            "id": "Educational Courses"
+            "id": "Computer activities"
         },
         {
             "type": "person",
             "phone_number": "555-0004",
             "id": "grace_gaming"
+        },
+        {
+            "type": "interest",
+            "id": "Battle gaming"
         },
         {
             "type": "interest",
@@ -92,21 +96,25 @@
         },
         {
             "type": "interest",
-            "id": "Learning"
-        },
-        {
-            "type": "interest",
             "id": "Models"
         }
     ],
     "links": [
         {
-            "source": "alice_tech",
-            "target": "Computer programming"
+            "source": "diana_art",
+            "target": "Learning"
+        },
+        {
+            "source": "diana_art",
+            "target": "Creative writing"
+        },
+        {
+            "source": "diana_art",
+            "target": "Art collecting"
         },
         {
             "source": "alice_tech",
-            "target": "Computer activities"
+            "target": "Computer programming"
         },
         {
             "source": "alice_tech",
@@ -122,7 +130,7 @@
         },
         {
             "source": "bob_sports",
-            "target": "Soccer"
+            "target": "Competitive dance"
         },
         {
             "source": "bob_sports",
@@ -130,31 +138,15 @@
         },
         {
             "source": "charlie_gaming",
-            "target": "Video gaming"
+            "target": "Video Games"
         },
         {
             "source": "charlie_gaming",
-            "target": "Video Games"
+            "target": "Video gaming"
         },
         {
             "source": "Video gaming",
             "target": "grace_gaming"
-        },
-        {
-            "source": "Video Games",
-            "target": "grace_gaming"
-        },
-        {
-            "source": "diana_art",
-            "target": "Creative writing"
-        },
-        {
-            "source": "diana_art",
-            "target": "Arts"
-        },
-        {
-            "source": "diana_art",
-            "target": "Learning"
         },
         {
             "source": "eve_music",
@@ -170,7 +162,11 @@
         },
         {
             "source": "frank_programming",
-            "target": "Educational Courses"
+            "target": "Computer activities"
+        },
+        {
+            "source": "grace_gaming",
+            "target": "Battle gaming"
         }
     ]
 }
