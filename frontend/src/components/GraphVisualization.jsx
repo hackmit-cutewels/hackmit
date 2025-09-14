@@ -483,7 +483,7 @@ const GraphVisualization = () => {
           </div>
           
           <div className="mt-12 text-center text-gray-500 text-sm">
-            <p className="font-serif">cutewels@eth-zurich</p>
+            <img src="/NETZ-LOGO.svg" alt="NETZ Logo" className="h-8 mx-auto" />
           </div>
         </div>
       </div>
@@ -679,7 +679,7 @@ const GraphVisualization = () => {
       <div className="border-t border-gray-200 bg-white">
         <div className="max-w-7xl mx-auto px-8 py-6">
           <div className="text-center text-gray-500">
-            <p className="font-serif">cutewels@eth-zurich</p>
+            <img src="/NETZ-LOGO.svg" alt="NETZ Logo" className="h-8 mx-auto" />
           </div>
         </div>
       </div>

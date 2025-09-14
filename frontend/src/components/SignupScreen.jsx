@@ -206,7 +206,7 @@ const SignupScreen = ({ onSignupSuccess, onBackToLogin }) => {
         </form>
         
         <div className="mt-12 text-center text-gray-500 text-sm">
-          <p className="font-serif">cutewels@eth-zurich</p>
+          <img src="/NETZ-LOGO.svg" alt="NETZ Logo" className="h-8 mx-auto" />
         </div>
       </div>
     </div>
