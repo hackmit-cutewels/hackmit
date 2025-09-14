@@ -183,11 +183,10 @@ async def get_pairs_nearby_place(request: GetPairsNearbyPlaceRequest):
                     "shared_interests": sorted(t1 & t2),
                     "jaccard": round(s, 6),
                     "place_information": tmp_res,
-                    "description": "People with similar interests and nearby places."
+                    "description" : "People with similar interests and nearby places."
                 })
-    
-    return {"pairs": results}
 
+    return { "pairs" : results}
 @app.get("/get_pairs")
 async def pairs(threshold: float = Query(0.2, ge=0.0, le=1.0),
           graph_file: str = Query(GRAPH_FILE)):

@@ -1,0 +1,176 @@
+{
+    "directed": false,
+    "multigraph": false,
+    "graph": {},
+    "nodes": [
+        {
+            "type": "person",
+            "phone_number": "555-0001",
+            "id": "alice_tech"
+        },
+        {
+            "type": "interest",
+            "id": "Computer programming"
+        },
+        {
+            "type": "interest",
+            "id": "Computer activities"
+        },
+        {
+            "type": "person",
+            "phone_number": "555-0002",
+            "id": "bob_sports"
+        },
+        {
+            "type": "interest",
+            "id": "Football"
+        },
+        {
+            "type": "interest",
+            "id": "Soccer"
+        },
+        {
+            "type": "person",
+            "phone_number": "555-0003",
+            "id": "charlie_gaming"
+        },
+        {
+            "type": "interest",
+            "id": "Video gaming"
+        },
+        {
+            "type": "interest",
+            "id": "Video Games"
+        },
+        {
+            "type": "person",
+            "phone_number": null,
+            "id": "diana_art"
+        },
+        {
+            "type": "interest",
+            "id": "Creative writing"
+        },
+        {
+            "type": "interest",
+            "id": "Arts"
+        },
+        {
+            "type": "person",
+            "phone_number": null,
+            "id": "eve_music"
+        },
+        {
+            "type": "interest",
+            "id": "Musical Instruments"
+        },
+        {
+            "type": "interest",
+            "id": "Music"
+        },
+        {
+            "type": "person",
+            "phone_number": null,
+            "id": "frank_programming"
+        },
+        {
+            "type": "interest",
+            "id": "Educational Courses"
+        },
+        {
+            "type": "person",
+            "phone_number": "555-0004",
+            "id": "grace_gaming"
+        },
+        {
+            "type": "interest",
+            "id": "Robotics"
+        },
+        {
+            "type": "interest",
+            "id": "Hiking"
+        },
+        {
+            "type": "interest",
+            "id": "Learning"
+        },
+        {
+            "type": "interest",
+            "id": "Models"
+        }
+    ],
+    "links": [
+        {
+            "source": "alice_tech",
+            "target": "Computer programming"
+        },
+        {
+            "source": "alice_tech",
+            "target": "Computer activities"
+        },
+        {
+            "source": "alice_tech",
+            "target": "Robotics"
+        },
+        {
+            "source": "Computer programming",
+            "target": "frank_programming"
+        },
+        {
+            "source": "bob_sports",
+            "target": "Football"
+        },
+        {
+            "source": "bob_sports",
+            "target": "Soccer"
+        },
+        {
+            "source": "bob_sports",
+            "target": "Hiking"
+        },
+        {
+            "source": "charlie_gaming",
+            "target": "Video gaming"
+        },
+        {
+            "source": "charlie_gaming",
+            "target": "Video Games"
+        },
+        {
+            "source": "Video gaming",
+            "target": "grace_gaming"
+        },
+        {
+            "source": "Video Games",
+            "target": "grace_gaming"
+        },
+        {
+            "source": "diana_art",
+            "target": "Creative writing"
+        },
+        {
+            "source": "diana_art",
+            "target": "Arts"
+        },
+        {
+            "source": "diana_art",
+            "target": "Learning"
+        },
+        {
+            "source": "eve_music",
+            "target": "Musical Instruments"
+        },
+        {
+            "source": "eve_music",
+            "target": "Music"
+        },
+        {
+            "source": "eve_music",
+            "target": "Models"
+        },
+        {
+            "source": "frank_programming",
+            "target": "Educational Courses"
+        }
+    ]
+}
