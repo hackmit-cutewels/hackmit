@@ -243,30 +243,105 @@ async def get_pairs_nearby_place(jaccard_threshold: float = Query(0.2, ge=0.0, l
     
     return {"pairs": results}
 
+MODEL = "claude-3-5-sonnet-20240620"   # pick your Claude 3.x model
+
+def llm_interest_similarity(
+    interests_a: Iterable[str],
+    interests_b: Iterable[str],
+    model: str = MODEL,
+    temperature: float = 0.0,
+) -> Tuple[float, str]:
+    """
+    Ask the LLM to score how similar two interest sets are.
+    Returns (score in [0,1], short explanation).
+    """
+    client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
+    A = sorted({str(x).strip() for x in interests_a})
+    B = sorted({str(x).strip() for x in interests_b})
+
+    prompt = f"""
+You will rate how similar two people's interests are.
+
+Output:
+Return ONLY JSON with keys "score" (float 0..1) and "explanation" (short).
+
+Guidelines:
+- 1.0 if sets are essentially identical.
+- ~0.8 for many exact overlaps or very closely related themes.
+- ~0.5 for a few overlaps or strong thematic relatedness.
+- ~0.2 for weak relations.
+- 0.0 if unrelated.
+- Heavily weight exact matches; with zero exact matches, rarely exceed 0.7.
+- Use 3 decimal places for "score".
+
+A = {A}
+B = {B}
+
+Return JSON ONLY, like:
+{{"score": 0.000, "explanation": "brief reason"}}
+""".strip()
+
+    msg = client.messages.create(
+        model=model,
+        max_tokens=300,
+        temperature=temperature,
+        messages=[{"role": "user", "content": prompt}],
+    )
+
+    # Extract text content and parse JSON
+    text = "".join(
+        block.text for block in msg.content
+        if getattr(block, "type", None) == "text"
+    ).strip()
+
+    data = json.loads(text)  # let this raise if not valid JSON
+    score = float(data.get("score", 0.0))
+
+    # clamp to [0,1]
+    score = max(0.0, min(1.0, score))
+    why = str(data.get("explanation", "")).strip()
+    return score, why
+
+
+
+
 @app.get("/pairs_with_common_interest")
-def pairs(threshold: float = Query(0.2, ge=0.0, le=1.0),
-          graph_file: str = Query(GRAPH_FILE)):
+def pairs(
+    threshold: float = Query(0.2, ge=0.0, le=1.0, description="Keep pairs with average(Jaccard, LLM) >= threshold"),
+    graph_file: str = Query(GRAPH_FILE),
+):
     pt = load_people_tags(graph_file)
     people = sorted(pt)
-    
+
     results = []
     if len(people) >= 2:
         for person1, person2 in combinations(people, 2):
-            interests1 = pt[person1]
-            interests2 = pt[person2]
-            
-            jaccard = calculate_jaccard_coefficient(interests1, interests2)
-            if jaccard >= threshold:
-                shared_interests = interests1 & interests2
+            t1, t2 = pt[person1], pt[person2]
+
+            # exact Jaccard
+            jaccard = calculate_jaccard_coefficient(t1, t2)
+
+            # LLM score (fallback to Jaccard on any error)
+            try:
+                llm_score, why = llm_interest_similarity(t1, t2)
+            except Exception:
+                llm_score, why = jaccard, "fallback=jaccard"
+
+            avg_score = (jaccard + llm_score) / 2.0
+
+            if avg_score >= threshold:
                 results.append({
                     "person1": person1,
                     "person2": person2,
-                    "person1_interests": sorted(interests1),
-                    "person2_interests": sorted(interests2),
-                    "shared_interests": sorted(shared_interests),
+                    "shared_interests": sorted(t1 & t2),
                     "jaccard": round(jaccard, 6),
+                    "llm_score": round(llm_score, 6),
+                    "average": round(avg_score, 6),
+                    "explanation": why,
                 })
-    
+
+    results.sort(key=lambda x: (-x["average"], -x["jaccard"], x["person1"], x["person2"]))
     return {"threshold": threshold, "count": len(results), "pairs": results}
 
 if __name__ == "__main__":
