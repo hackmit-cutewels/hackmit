@@ -475,7 +475,7 @@ const GraphVisualization = () => {
               
               <button
                 onClick={() => setShowSignup(true)}
-                className="w-full px-4 py-3 text-gray-600 hover:text-gray-900 font-serif transition-colors duration-200"
+                className="w-full px-4 py-3 text-gray-600 hover:text-gray-900 font-serif transition-colors duration-200 cursor-pointer"
               >
                 Set API Key
               </button>

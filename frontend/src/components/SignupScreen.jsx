@@ -190,7 +190,7 @@ const SignupScreen = ({ onSignupSuccess, onBackToLogin }) => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full px-4 py-3 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-400 text-white font-medium rounded-md transition-colors duration-200 font-serif"
+              className="w-full px-4 py-3 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-400 text-white font-medium rounded-md transition-colors duration-200 font-serif cursor-pointer disabled:cursor-not-allowed"
             >
               {loading ? 'Setting API Key...' : 'Set API Key'}
             </button>
@@ -198,7 +198,7 @@ const SignupScreen = ({ onSignupSuccess, onBackToLogin }) => {
             <button
               type="button"
               onClick={onBackToLogin}
-              className="w-full px-4 py-3 text-gray-600 hover:text-gray-900 font-serif transition-colors duration-200"
+              className="w-full px-4 py-3 text-gray-600 hover:text-gray-900 font-serif transition-colors duration-200 cursor-pointer"
             >
               Back to Login
             </button>
