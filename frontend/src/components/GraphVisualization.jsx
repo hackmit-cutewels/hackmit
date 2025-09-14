@@ -1,8 +1,8 @@
 "use client"
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
-import InterestsList from './InterestsList';
 import SignupScreen from './SignupScreen';
+import MapView from './MapView';
 
 const GraphVisualization = () => {
   const svgRef = useRef(null);
@@ -12,8 +12,13 @@ const GraphVisualization = () => {
   const [user_id, setUser_id] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   const [loginError, setLoginError] = useState(null);
-  const [viewMode, setViewMode] = useState('graph'); // 'graph' or 'list'
   const [showSignup, setShowSignup] = useState(false);
+  const [viewMode, setViewMode] = useState('graph'); // 'graph' or 'map'
+
+  // Debug view mode changes
+  useEffect(() => {
+    console.log('View mode changed to:', viewMode, 'Graph data exists:', !!graphData);
+  }, [viewMode, graphData]);
 
   const handleLogin = async () => {
     if (!user_id.trim()) {
@@ -32,8 +37,8 @@ const GraphVisualization = () => {
     setGraphData(null);
     setError(null);
     setLoginError(null);
-    setViewMode('graph');
     setShowSignup(false);
+    setViewMode('graph');
   };
 
   const handleSignupSuccess = (newUser_id) => {
@@ -120,30 +125,54 @@ const GraphVisualization = () => {
       .attr('stroke-width', 1)
       .attr('opacity', 0.6);
 
-    // Create nodes with clean, minimal styling
+    // Create nodes with different shapes
     const node = container.append('g')
       .attr('class', 'nodes')
-      .selectAll('circle')
+      .selectAll('g')
       .data(graphData.nodes)
-      .enter().append('circle')
-      .attr('r', d => {
-        if (d.id === currentUser) return 20;
-        return d.type === 'interest' ? 12 : 16;
-      })
-      .attr('fill', d => {
-        if (d.id === currentUser) return '#059669';
-        return d.type === 'interest' ? '#d97706' : '#2563eb';
-      })
-      .attr('stroke', d => {
-        if (d.id === currentUser) return '#047857';
-        return d.type === 'interest' ? '#b45309' : '#1d4ed8';
-      })
-      .attr('stroke-width', 1.5)
+      .enter().append('g')
       .style('cursor', 'pointer')
       .call(d3.drag()
         .on('start', dragstarted)
         .on('drag', dragged)
         .on('end', dragended));
+
+    // Add shapes based on node type
+    node.each(function(d) {
+      const g = d3.select(this);
+      
+      if (d.type === 'interest') {
+        // Square for interests with glow effect
+        const size = 12;
+        g.append('rect')
+          .attr('x', -size/2)
+          .attr('y', -size/2)
+          .attr('width', size)
+          .attr('height', size)
+          .attr('fill', '#f59e0b')
+          .attr('stroke', '#d97706')
+          .attr('stroke-width', 1.5)
+          .attr('rx', 2)
+          .style('filter', 'drop-shadow(0 0 4px rgba(245, 158, 11, 0.4))');
+      } else if (d.type === 'place') {
+        // Diamond for places with blue color
+        const size = 12;
+        g.append('path')
+          .attr('d', `M 0,-${size/2} L ${size/2},0 L 0,${size/2} L -${size/2},0 Z`)
+          .attr('fill', '#3b82f6')
+          .attr('stroke', '#1d4ed8')
+          .attr('stroke-width', 1.5)
+          .style('filter', 'drop-shadow(0 0 4px rgba(59, 130, 246, 0.4))');
+      } else {
+        // Circle for people - neutral colors
+        const radius = d.id === currentUser ? 20 : 16;
+        g.append('circle')
+          .attr('r', radius)
+          .attr('fill', d.id === currentUser ? '#6b7280' : '#9ca3af')
+          .attr('stroke', d.id === currentUser ? '#4b5563' : '#6b7280')
+          .attr('stroke-width', 1.5);
+      }
+    });
 
     // Add clean labels with better contrast
     const label = container.append('g')
@@ -153,7 +182,8 @@ const GraphVisualization = () => {
       .enter().append('text')
       .text(d => {
         if (d.id === currentUser) return 'you';
-        if (d.type === 'person' && d.phone_number) return d.phone_number;
+        if (d.type === 'person') return ''; // Hide phone numbers on blue nodes
+        if (d.type === 'place') return ''; // Hide place coordinates by default
         return d.label;
       })
       .attr('text-anchor', 'middle')
@@ -163,7 +193,7 @@ const GraphVisualization = () => {
       .attr('font-weight', d => d.id === currentUser ? '500' : '400')
       .attr('font-family', 'serif')
       .style('pointer-events', 'none')
-      .style('opacity', d => d.type === 'interest' ? 0 : 1)
+      .style('opacity', d => (d.type === 'interest' || d.type === 'place') ? 0 : 1)
       .style('text-shadow', d => d.id === currentUser ? '0 1px 2px rgba(0, 0, 0, 0.5)' : '0 1px 1px rgba(255, 255, 255, 0.8)');
 
     // Create tooltip for phone numbers
@@ -187,22 +217,33 @@ const GraphVisualization = () => {
     // Add subtle hover effects
     node
       .on('mouseover', function(event, d) {
-        d3.select(this)
+        const g = d3.select(this);
+        g.selectAll('circle, rect, path')
           .transition()
           .duration(150)
           .attr('r', d => {
             if (d.id === currentUser) return 22;
-            return d.type === 'interest' ? 14 : 18;
+            return d.type === 'interest' ? 14 : d.type === 'place' ? 14 : 18;
           })
-          .attr('stroke-width', 2);
+          .attr('width', d => d.type === 'interest' ? 14 : null)
+          .attr('height', d => d.type === 'interest' ? 14 : null)
+          .attr('x', d => d.type === 'interest' ? -7 : null)
+          .attr('y', d => d.type === 'interest' ? -7 : null)
+          .attr('d', d => {
+            if (d.type === 'place') {
+              const size = 14;
+              return `M 0,-${size/2} L ${size/2},0 L 0,${size/2} L -${size/2},0 Z`;
+            }
+            return null;
+          })
+          .attr('stroke-width', 2)
+          .style('filter', d => {
+            if (d.type === 'interest') return 'drop-shadow(0 0 6px rgba(245, 158, 11, 0.6))';
+            if (d.type === 'place') return 'drop-shadow(0 0 6px rgba(59, 130, 246, 0.6))';
+            return null;
+          });
         
-        // Show label for interest nodes on hover
-        if (d.type === 'interest') {
-          label.filter(labelData => labelData.id === d.id)
-            .transition()
-            .duration(200)
-            .style('opacity', 1);
-        }
+        // Labels are now only shown via tooltips, not as black text on hover
 
         // Show phone number tooltip for person nodes (other than current user)
         if (d.type === 'person' && d.id !== currentUser && d.phone_number) {
@@ -212,35 +253,75 @@ const GraphVisualization = () => {
             .style('left', (event.pageX + 10) + 'px')
             .style('top', (event.pageY - 10) + 'px');
         }
+        
+        // Show place coordinates tooltip for place nodes
+        if (d.type === 'place') {
+          tooltip
+            .style('opacity', 1)
+            .html(`📍 ${d.label}`)
+            .style('left', (event.pageX + 10) + 'px')
+            .style('top', (event.pageY - 10) + 'px');
+        }
+        
+        // Show interest name tooltip for interest nodes
+        if (d.type === 'interest') {
+          tooltip
+            .style('opacity', 1)
+            .html(`${d.label}`)
+            .style('left', (event.pageX + 10) + 'px')
+            .style('top', (event.pageY - 10) + 'px');
+        }
       })
       .on('mousemove', function(event, d) {
         // Update tooltip position on mouse move
-        if (d.type === 'person' && d.id !== currentUser && d.phone_number) {
+        if ((d.type === 'person' && d.id !== currentUser && d.phone_number) || d.type === 'place' || d.type === 'interest') {
           tooltip
             .style('left', (event.pageX + 10) + 'px')
             .style('top', (event.pageY - 10) + 'px');
         }
       })
       .on('mouseout', function(event, d) {
-        d3.select(this)
+        const g = d3.select(this);
+        g.selectAll('circle, rect, path')
           .transition()
           .duration(150)
           .attr('r', d => {
             if (d.id === currentUser) return 20;
-            return d.type === 'interest' ? 12 : 16;
+            return d.type === 'interest' ? 12 : d.type === 'place' ? 12 : 16;
           })
-          .attr('stroke-width', 1.5);
+          .attr('width', d => d.type === 'interest' ? 12 : null)
+          .attr('height', d => d.type === 'interest' ? 12 : null)
+          .attr('x', d => d.type === 'interest' ? -6 : null)
+          .attr('y', d => d.type === 'interest' ? -6 : null)
+          .attr('d', d => {
+            if (d.type === 'place') {
+              const size = 12;
+              return `M 0,-${size/2} L ${size/2},0 L 0,${size/2} L -${size/2},0 Z`;
+            }
+            return null;
+          })
+          .attr('stroke-width', 1.5)
+          .style('filter', d => {
+            if (d.type === 'interest') return 'drop-shadow(0 0 4px rgba(245, 158, 11, 0.4))';
+            if (d.type === 'place') return 'drop-shadow(0 0 4px rgba(59, 130, 246, 0.4))';
+            return null;
+          });
         
-        // Hide label for interest nodes on mouseout
-        if (d.type === 'interest') {
-          label.filter(labelData => labelData.id === d.id)
-            .transition()
-            .duration(200)
-            .style('opacity', 0);
-        }
+        // Labels are now only shown via tooltips, no need to hide them on mouseout
 
-        // Hide phone number tooltip
+        // Hide tooltip
         tooltip.style('opacity', 0);
+      })
+      .on('click', function(event, d) {
+        /*// Open SMS for blue nodes (people with phone numbers)
+        if (d.type === 'person' && d.id !== currentUser && d.phone_number) {
+          openSMS(d.phone_number);
+        }
+        // Open Google Maps for place nodes
+        if (d.type === 'place' && d.latitude && d.longitude) {
+          openGoogleMaps(d.latitude, d.longitude);
+        } 
+        */
       });
 
     simulation.on('tick', () => {
@@ -251,8 +332,7 @@ const GraphVisualization = () => {
         .attr('y2', d => d.target.y);
 
       node
-        .attr('cx', d => d.x)
-        .attr('cy', d => d.y);
+        .attr('transform', d => `translate(${d.x}, ${d.y})`);
 
       label
         .attr('x', d => d.x)
@@ -294,6 +374,24 @@ const GraphVisualization = () => {
 
   }, [graphData, currentUser]);
 
+  // Re-render graph when switching back to graph view
+  useEffect(() => {
+    if (viewMode === 'graph' && graphData && svgRef.current) {
+      console.log('Switching back to graph view, graphData:', graphData);
+      // Force re-render by clearing and re-drawing
+      const svg = d3.select(svgRef.current);
+      svg.selectAll('*').remove();
+      
+      // Force the main useEffect to run again
+      setTimeout(() => {
+        if (svgRef.current && graphData) {
+          // Trigger a re-render by updating the graphData state
+          setGraphData({...graphData});
+        }
+      }, 50);
+    }
+  }, [viewMode]);
+
   const handleResetZoom = () => {
     const svg = d3.select(svgRef.current);
     if (svg.node().resetZoom) {
@@ -307,9 +405,26 @@ const GraphVisualization = () => {
     }
   };
 
+  const openSMS = (phoneNumber) => {
+    // Create SMS URL with the phone number
+    const smsUrl = `sms:${phoneNumber}`;
+    window.open(smsUrl, '_blank');
+  };
+
+  const openGoogleMaps = (latitude, longitude) => {
+    // Create Google Maps URL with the coordinates
+    const mapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+    window.open(mapsUrl, '_blank');
+  };
+
   // Signup Screen
   if (showSignup) {
     return <SignupScreen onSignupSuccess={handleSignupSuccess} onBackToLogin={handleBackToLogin} />;
+  }
+
+  // If in map view, show the MapView component
+  if (viewMode === 'map') {
+    return <MapView currentUser={currentUser} onLogout={handleLogout} onViewModeChange={setViewMode} />;
   }
 
   // Login Screen
@@ -375,10 +490,6 @@ const GraphVisualization = () => {
     );
   }
 
-  // If in list view, show the InterestsList component
-  if (viewMode === 'list') {
-    return <InterestsList currentUser={currentUser} onLogout={handleLogout} />;
-  }
 
   // Main Graph View
   return (
@@ -395,8 +506,8 @@ const GraphVisualization = () => {
                   Logged in as <span className="font-mono">{currentUser}</span>
                 </p>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="flex bg-gray-100 rounded-lg p-1">
+          <div className="flex items-center space-x-4">
+             {/*   <div className="flex bg-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => setViewMode('graph')}
                   className={`px-4 py-2 rounded-md font-serif transition-colors duration-200 ${
@@ -408,16 +519,16 @@ const GraphVisualization = () => {
                   Graph View
                 </button>
                 <button
-                  onClick={() => setViewMode('list')}
+                  onClick={() => setViewMode('map')}
                   className={`px-4 py-2 rounded-md font-serif transition-colors duration-200 ${
-                    viewMode === 'list'
+                    viewMode === 'map'
                       ? 'bg-white text-gray-900 shadow-sm'
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  List View
+                  Map View
                 </button>
-              </div>
+              </div>*/}
               <button
                 onClick={handleLogout}
                 className="px-4 py-2 text-gray-600 hover:text-gray-900 font-serif transition-colors duration-200"
@@ -476,7 +587,7 @@ const GraphVisualization = () => {
                 
                 {!loading && !error && graphData && (
                   <div className="flex justify-center">
-                    <svg ref={svgRef} className="border border-gray-100 rounded-lg bg-white shadow-sm"></svg>
+                    <svg ref={svgRef} key={`graph-${viewMode}-${currentUser}`} className="border border-gray-100 rounded-lg bg-white shadow-sm"></svg>
                   </div>
                 )}
               </div>
@@ -495,19 +606,21 @@ const GraphVisualization = () => {
                     <span className="font-semibold font-serif">{graphData.nodes.length}</span>
                   </div>
                   <div className="flex justify-between text-gray-700">
-                    <span className="font-serif">Edges:</span>
-                    <span className="font-semibold font-serif">{graphData.edges.length}</span>
-                  </div>
-                  <div className="flex justify-between text-gray-700">
-                    <span className="font-serif">Interest Nodes:</span>
+                    <span className="font-serif">Interests:</span>
                     <span className="font-semibold font-serif">
                       {graphData.nodes.filter(n => n.type === 'interest').length}
                     </span>
                   </div>
                   <div className="flex justify-between text-gray-700">
+                    <span className="font-serif">Places:</span>
+                    <span className="font-semibold font-serif">
+                      {graphData.nodes.filter(n => n.type === 'place').length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-gray-700">
                     <span className="font-serif">People:</span>
                     <span className="font-semibold font-serif">
-                      {graphData.nodes.filter(n => n.type !== 'interest').length}
+                      {graphData.nodes.filter(n => n.type === 'person').length}
                     </span>
                   </div>
                 </div>
@@ -517,7 +630,7 @@ const GraphVisualization = () => {
             </div>
 
             {/* Instructions Card */}
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
+            {/*<div className="bg-white border border-gray-200 rounded-lg p-6">
               <h3 className="text-lg font-serif text-gray-900 mb-4">Controls</h3>
               <ul className="space-y-3 text-gray-700 text-sm">
                 <li className="flex items-start">
@@ -534,7 +647,7 @@ const GraphVisualization = () => {
                 </li>
                 <li className="flex items-start">
                   <span className="text-gray-400 mr-2 font-serif">•</span>
-                  <span className="font-serif"><strong>Hover interest nodes:</strong> Show labels</span>
+                  <span className="font-serif"><strong>Hover interest/place nodes:</strong> Show labels</span>
                 </li>
                 <li className="flex items-start">
                   <span className="text-gray-400 mr-2 font-serif">•</span>
@@ -546,15 +659,19 @@ const GraphVisualization = () => {
                 </li>
                 <li className="flex items-start">
                   <span className="text-orange-500 mr-2 font-serif">•</span>
-                  <span className="font-serif"><strong>Orange nodes:</strong> Interest types</span>
+                  <span className="font-serif"><strong>Orange squares:</strong> Interest types</span>
                 </li>
                 <li className="flex items-start">
                   <span className="text-blue-500 mr-2 font-serif">•</span>
-                  <span className="font-serif"><strong>Blue nodes:</strong> Other people (shows phone numbers)</span>
+                  <span className="font-serif"><strong>Blue diamonds:</strong> Places (click to open in Google Maps)</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-gray-500 mr-2 font-serif">•</span>
+                  <span className="font-serif"><strong>Gray circles:</strong> Other people (shows phone numbers)</span>
                 </li>
               </ul>
-            </div>
-          </div>
+            </div>  */}
+          </div>  
         </div>
       </div>
 

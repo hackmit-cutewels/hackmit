@@ -39,8 +39,14 @@ def get_graph_data(user_id: Optional[str] = None):
         n for n in neighbors
         if people_graph.nodes[n].get("type") == "interest"
     ]
+    
+    place_nodes = [
+        n for n in neighbors
+        if people_graph.nodes[n].get("type") == "place"
+    ]
 
     person_nodes = set()
+    # Find people connected through interests
     for interest in interest_nodes:
         for person in people_graph.neighbors(interest):
             if person == user_id:
@@ -49,34 +55,65 @@ def get_graph_data(user_id: Optional[str] = None):
             # Only show users who have phone numbers
             if node_data.get("type") == "person" and node_data.get("phone_number"):
                 person_nodes.add(person)
+    
+    # Find people connected through places (within reasonable distance)
+    for place in place_nodes:
+        for person in people_graph.neighbors(place):
+            if person == user_id:
+                continue
+            node_data = people_graph.nodes[person]
+            # Only show users who have phone numbers
+            if node_data.get("type") == "person" and node_data.get("phone_number"):
+                person_nodes.add(person)
 
-    node_ids = set([user_id]) | set(interest_nodes) | person_nodes
+    node_ids = set([user_id]) | set(interest_nodes) | set(place_nodes) | person_nodes
     nodes = []
     for n in node_ids:
         node_data = people_graph.nodes[n]
         node = {
-            "id": n,
+            "id": str(n),  # Convert tuple to string for JSON serialization
             "type": node_data.get("type", "unknown"),
-            "label": n
+            "label": str(n)
         }
         if "phone_number" in node_data:
             node["phone_number"] = node_data["phone_number"]
+        # Add place coordinates for place nodes
+        if node_data.get("type") == "place" and isinstance(n, tuple):
+            node["latitude"] = n[0]
+            node["longitude"] = n[1]
+            node["label"] = f"({n[0]:.4f}, {n[1]:.4f})"
         nodes.append(node)
 
     edges = []
+    # Add edges for interests
     for interest in interest_nodes:
         if people_graph.has_edge(user_id, interest):
-            edges.append({"source": user_id, "target": interest})
+            edges.append({"source": user_id, "target": str(interest)})
         if people_graph.is_directed() and people_graph.has_edge(interest, user_id):
-            edges.append({"source": interest, "target": user_id})
+            edges.append({"source": str(interest), "target": user_id})
 
     for interest in interest_nodes:
         for person in people_graph.neighbors(interest):
             if person in person_nodes:
                 if people_graph.has_edge(interest, person):
-                    edges.append({"source": interest, "target": person})
+                    edges.append({"source": str(interest), "target": person})
                 if people_graph.is_directed() and people_graph.has_edge(person, interest):
-                    edges.append({"source": person, "target": interest})
+                    edges.append({"source": person, "target": str(interest)})
+    
+    # Add edges for places
+    for place in place_nodes:
+        if people_graph.has_edge(user_id, place):
+            edges.append({"source": user_id, "target": str(place)})
+        if people_graph.is_directed() and people_graph.has_edge(place, user_id):
+            edges.append({"source": str(place), "target": user_id})
+
+    for place in place_nodes:
+        for person in people_graph.neighbors(place):
+            if person in person_nodes:
+                if people_graph.has_edge(place, person):
+                    edges.append({"source": str(place), "target": person})
+                if people_graph.is_directed() and people_graph.has_edge(person, place):
+                    edges.append({"source": person, "target": str(place)})
 
     return {"nodes": nodes, "edges": edges}
 
@@ -142,42 +179,7 @@ def calculate_jaccard_coefficient(set1: set, set2: set) -> float:
         return 0.0
     return len(intersection) / len(union)
 
-@app.get("/api/interests_list")
-def get_interests_list(user_id: Optional[str] = None):
-    """Get interests for a user and people sharing each interest"""
-    people_graph = load_graph(GRAPH_FILE)
-    
-    if not user_id:
-        return {"interests": []}
-    
-    if user_id not in people_graph.nodes():
-        return {"interests": [], "error": f"User '{user_id}' not found in graph"}
-    
-    # Get user's interests
-    user_interests = []
-    for neighbor in people_graph.neighbors(user_id):
-        if people_graph.nodes[neighbor].get("type") == "interest":
-            # Find all people who share this interest
-            people_sharing = []
-            for person in people_graph.neighbors(neighbor):
-                if person != user_id and people_graph.nodes[person].get("type") == "person":
-                    person_data = people_graph.nodes[person]
-                    # Only show users who have phone numbers
-                    if person_data.get("phone_number"):
-                        people_sharing.append({
-                            "phone_number": person_data.get("phone_number")
-                        })
-            
-            user_interests.append({
-                "interest": neighbor,
-                "people_sharing": people_sharing,
-                "count": len(people_sharing)
-            })
-    
-    # Sort by count of people sharing (most popular first)
-    user_interests.sort(key=lambda x: x["count"], reverse=True)
-    
-    return {"interests": user_interests}
+
 
 def lat_lon_to_meters(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """
@@ -240,8 +242,74 @@ async def get_pairs_nearby_place(jaccard_threshold: float = Query(0.2, ge=0.0, l
                     "place_information": tmp_res,
                     "description" : "People with similar interests and nearby places."
                 })
-    
+
     return {"pairs": results}
+
+@app.get("/api/map_data")
+def get_map_data(user_id: Optional[str] = None):
+    """Get map data with all places and people who share interests and are at those places"""
+    people_graph = load_graph(GRAPH_FILE)
+    
+    if not user_id:
+        return {"places": []}
+    
+    if user_id not in people_graph.nodes():
+        print(f"User '{user_id}' not found in graph")
+        return {"places": [], "error": f"User '{user_id}' not found in graph"}
+    
+    # Get user's interests
+    user_interests = set()
+    for neighbor in people_graph.neighbors(user_id):
+        if people_graph.nodes[neighbor].get("type") == "interest":
+            user_interests.add(neighbor)
+    
+    # Get all places from the graph
+    all_places = []
+    for node in people_graph.nodes():
+        if people_graph.nodes[node].get("type") == "place":
+            all_places.append(node)
+
+    print(all_places)
+    
+    # Process each place
+    user_places = []
+    for place in all_places:
+        # Find people who share interests with user AND are at this place
+        people_at_place = []
+        for person in people_graph.neighbors(place):
+            if person != user_id and people_graph.nodes[person].get("type") == "person":
+                person_data = people_graph.nodes[person]
+                # Only include people with phone numbers
+                if person_data.get("phone_number"):
+                    # Check if this person shares any interests with the user
+                    person_interests = set()
+                    for interest in people_graph.neighbors(person):
+                        if people_graph.nodes[interest].get("type") == "interest":
+                            person_interests.add(interest)
+                    
+                    shared_interests = user_interests & person_interests
+                    if shared_interests:  # Only include if they share at least one interest
+                        people_at_place.append({
+                            "phone_number": person_data.get("phone_number"),
+                            "shared_interests": list(shared_interests)
+                        })
+        
+        # Include all places, even if no people with shared interests
+        if isinstance(place, tuple) and len(place) == 2:
+            latitude, longitude = place
+            user_places.append({
+                "place": place,
+                "latitude": latitude,
+                "longitude": longitude,
+                "people": people_at_place,
+                "people_count": len(people_at_place)
+            })
+
+    print(user_places)
+    
+    # Sort by number of people (most active places first)
+    user_places.sort(key=lambda x: x["people_count"], reverse=True)
+    return {"places": user_places}
 
 @app.get("/pairs_with_common_interest")
 def pairs(threshold: float = Query(0.2, ge=0.0, le=1.0),
