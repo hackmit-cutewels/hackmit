@@ -44,6 +44,7 @@ def get_graph_data(user_id: Optional[str] = None):
             if person == user_id:
                 continue
             node_data = people_graph.nodes[person]
+            # Only show users who have phone numbers
             if node_data.get("type") == "person" and node_data.get("phone_number"):
                 person_nodes.add(person)
 
@@ -88,6 +89,7 @@ class AddPersonWithPlaceRequest(BaseModel):
     phone_number: Optional[str]
     latitude: float
     longitude: float
+
 
 @app.post("/api/add_person_with_place")
 async def add_person_with_place(request: AddPersonWithPlaceRequest):
@@ -137,6 +139,43 @@ def calculate_jaccard_coefficient(set1: set, set2: set) -> float:
     if len(union) == 0:
         return 0.0
     return len(intersection) / len(union)
+
+@app.get("/api/interests_list")
+def get_interests_list(user_id: Optional[str] = None):
+    """Get interests for a user and people sharing each interest"""
+    people_graph = load_graph(GRAPH_FILE)
+    
+    if not user_id:
+        return {"interests": []}
+    
+    if user_id not in people_graph.nodes():
+        return {"interests": [], "error": f"User '{user_id}' not found in graph"}
+    
+    # Get user's interests
+    user_interests = []
+    for neighbor in people_graph.neighbors(user_id):
+        if people_graph.nodes[neighbor].get("type") == "interest":
+            # Find all people who share this interest
+            people_sharing = []
+            for person in people_graph.neighbors(neighbor):
+                if person != user_id and people_graph.nodes[person].get("type") == "person":
+                    person_data = people_graph.nodes[person]
+                    # Only show users who have phone numbers
+                    if person_data.get("phone_number"):
+                        people_sharing.append({
+                            "phone_number": person_data.get("phone_number")
+                        })
+            
+            user_interests.append({
+                "interest": neighbor,
+                "people_sharing": people_sharing,
+                "count": len(people_sharing)
+            })
+    
+    # Sort by count of people sharing (most popular first)
+    user_interests.sort(key=lambda x: x["count"], reverse=True)
+    
+    return {"interests": user_interests}
 
 @app.get("/pairs_with_common_interest")
 def pairs(threshold: float = Query(0.2, ge=0.0, le=1.0),

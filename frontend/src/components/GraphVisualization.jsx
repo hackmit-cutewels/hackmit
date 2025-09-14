@@ -1,32 +1,51 @@
 "use client"
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
+import InterestsList from './InterestsList';
+import SignupScreen from './SignupScreen';
 
 const GraphVisualization = () => {
   const svgRef = useRef(null);
   const [graphData, setGraphData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [username, setUsername] = useState('');
+  const [user_id, setUser_id] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   const [loginError, setLoginError] = useState(null);
+  const [viewMode, setViewMode] = useState('graph'); // 'graph' or 'list'
+  const [showSignup, setShowSignup] = useState(false);
 
   const handleLogin = async () => {
-    if (!username.trim()) {
-      setLoginError('Please enter a username');
+    if (!user_id.trim()) {
+      setLoginError('Please enter a user ID');
       return;
     }
     
-    setCurrentUser(username.trim());
+    setCurrentUser(user_id.trim());
     setLoginError(null);
-    await fetchGraphData(username.trim());
+    await fetchGraphData(user_id.trim());
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
-    setUsername('');
+    setUser_id('');
     setGraphData(null);
     setError(null);
+    setLoginError(null);
+    setViewMode('graph');
+    setShowSignup(false);
+  };
+
+  const handleSignupSuccess = (newUser_id) => {
+    setCurrentUser(newUser_id);
+    setUser_id(newUser_id);
+    setShowSignup(false);
+    setLoginError(null);
+    fetchGraphData(newUser_id);
+  };
+
+  const handleBackToLogin = () => {
+    setShowSignup(false);
     setLoginError(null);
   };
 
@@ -54,10 +73,14 @@ const GraphVisualization = () => {
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove(); // Clear previous content
 
+    // Clean up any existing tooltips
+    d3.selectAll('.phone-tooltip').remove();
+
     const width = 600;
     const height = 400;
+    const padding = 50; // Extra padding for glow effect
     
-    svg.attr('width', width).attr('height', height);
+    svg.attr('width', width + padding * 2).attr('height', height + padding * 2);
 
     console.log('Nodes:', graphData.nodes);
     console.log('Edges:', graphData.edges);
@@ -72,8 +95,9 @@ const GraphVisualization = () => {
     // Apply zoom to svg
     svg.call(zoom);
 
-    // Create a container group for all graph elements
-    const container = svg.append('g');
+    // Create a container group for all graph elements with padding offset
+    const container = svg.append('g')
+      .attr('transform', `translate(${padding}, ${padding})`);
 
     // Create simulation
     const simulation = d3.forceSimulation(graphData.nodes)
@@ -83,134 +107,94 @@ const GraphVisualization = () => {
       .force('charge', d3.forceManyBody().strength(-300))
       .force('center', d3.forceCenter(width / 2, height / 2));
 
-    // Create gradient definitions
+    // Create simple definitions for clean minimal look
     const defs = svg.append('defs');
-    
-    // Gradient for regular nodes
-    const nodeGradient = defs.append('radialGradient')
-      .attr('id', 'nodeGradient')
-      .attr('cx', '30%')
-      .attr('cy', '30%');
-    
-    nodeGradient.append('stop')
-      .attr('offset', '0%')
-      .attr('stop-color', '#ffffff')
-      .attr('stop-opacity', 0.8);
-    
-    nodeGradient.append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', '#3b82f6')
-      .attr('stop-opacity', 0.6);
 
-    // Gradient for interest nodes
-    const interestGradient = defs.append('radialGradient')
-      .attr('id', 'interestGradient')
-      .attr('cx', '30%')
-      .attr('cy', '30%');
-    
-    interestGradient.append('stop')
-      .attr('offset', '0%')
-      .attr('stop-color', '#fbbf24')
-      .attr('stop-opacity', 0.8);
-    
-    interestGradient.append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', '#f59e0b')
-      .attr('stop-opacity', 0.6);
-
-    // Gradient for current user node
-    const userGradient = defs.append('radialGradient')
-      .attr('id', 'userGradient')
-      .attr('cx', '30%')
-      .attr('cy', '30%');
-    
-    userGradient.append('stop')
-      .attr('offset', '0%')
-      .attr('stop-color', '#ffffff')
-      .attr('stop-opacity', 0.9);
-    
-    userGradient.append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', '#10b981')
-      .attr('stop-opacity', 0.7);
-
-    // Create glow filter
-    const filter = defs.append('filter')
-      .attr('id', 'glow');
-    
-    filter.append('feGaussianBlur')
-      .attr('stdDeviation', '3')
-      .attr('result', 'coloredBlur');
-    
-    const feMerge = filter.append('feMerge');
-    feMerge.append('feMergeNode')
-      .attr('in', 'coloredBlur');
-    feMerge.append('feMergeNode')
-      .attr('in', 'SourceGraphic');
-
-    // Create links
+    // Create links with minimal styling
     const link = container.append('g')
       .attr('class', 'links')
       .selectAll('line')
       .data(graphData.edges)
       .enter().append('line')
-      .attr('stroke', 'rgba(255, 255, 255, 0.6)')
-      .attr('stroke-width', 2)
-      .attr('filter', 'url(#glow)');
+      .attr('stroke', '#d1d5db')
+      .attr('stroke-width', 1)
+      .attr('opacity', 0.6);
 
-    // Create nodes with different styles based on type
+    // Create nodes with clean, minimal styling
     const node = container.append('g')
       .attr('class', 'nodes')
       .selectAll('circle')
       .data(graphData.nodes)
       .enter().append('circle')
       .attr('r', d => {
-        if (d.id === currentUser) return 25;
-        return d.type === 'interest' ? 15 : 20;
+        if (d.id === currentUser) return 20;
+        return d.type === 'interest' ? 12 : 16;
       })
       .attr('fill', d => {
-        if (d.id === currentUser) return 'url(#userGradient)';
-        return d.type === 'interest' ? 'url(#interestGradient)' : 'url(#nodeGradient)';
+        if (d.id === currentUser) return '#059669';
+        return d.type === 'interest' ? '#d97706' : '#2563eb';
       })
       .attr('stroke', d => {
-        if (d.id === currentUser) return 'rgba(16, 185, 129, 0.9)';
-        return d.type === 'interest' ? 'rgba(251, 191, 36, 0.8)' : 'rgba(255, 255, 255, 0.8)';
+        if (d.id === currentUser) return '#047857';
+        return d.type === 'interest' ? '#b45309' : '#1d4ed8';
       })
-      .attr('stroke-width', d => d.id === currentUser ? 3 : 2)
-      .attr('filter', 'url(#glow)')
+      .attr('stroke-width', 1.5)
       .style('cursor', 'pointer')
       .call(d3.drag()
         .on('start', dragstarted)
         .on('drag', dragged)
         .on('end', dragended));
 
-    // Add labels - hide for interest nodes by default
+    // Add clean labels with better contrast
     const label = container.append('g')
       .attr('class', 'labels')
       .selectAll('text')
       .data(graphData.nodes)
       .enter().append('text')
-      .text(d => d.label)
+      .text(d => {
+        if (d.id === currentUser) return 'you';
+        if (d.type === 'person' && d.phone_number) return d.phone_number;
+        return d.label;
+      })
       .attr('text-anchor', 'middle')
       .attr('dy', '.35em')
-      .attr('fill', d => d.id === currentUser ? 'rgba(16, 185, 129, 0.9)' : 'rgba(255, 255, 255, 0.9)')
-      .attr('font-size', d => d.id === currentUser ? '14px' : '12px')
-      .attr('font-weight', 'bold')
-      .attr('filter', 'url(#glow)')
+      .attr('fill', d => d.id === currentUser ? '#ffffff' : '#1f2937')
+      .attr('font-size', d => d.id === currentUser ? '11px' : '9px')
+      .attr('font-weight', d => d.id === currentUser ? '500' : '400')
+      .attr('font-family', 'serif')
       .style('pointer-events', 'none')
-      .style('opacity', d => d.type === 'interest' ? 0 : 1);
+      .style('opacity', d => d.type === 'interest' ? 0 : 1)
+      .style('text-shadow', d => d.id === currentUser ? '0 1px 2px rgba(0, 0, 0, 0.5)' : '0 1px 1px rgba(255, 255, 255, 0.8)');
 
-    // Add hover effects with different behaviors for interest nodes
+    // Create tooltip for phone numbers
+    const tooltip = d3.select('body')
+      .append('div')
+      .attr('class', 'phone-tooltip')
+      .style('position', 'absolute')
+      .style('background', 'white')
+      .style('color', '#374151')
+      .style('padding', '8px 12px')
+      .style('border-radius', '6px')
+      .style('font-size', '12px')
+      .style('font-weight', '500')
+      .style('font-family', 'serif')
+      .style('pointer-events', 'none')
+      .style('opacity', 0)
+      .style('z-index', 1000)
+      .style('box-shadow', '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)')
+      .style('border', '1px solid #e5e7eb');
+
+    // Add subtle hover effects
     node
       .on('mouseover', function(event, d) {
         d3.select(this)
           .transition()
-          .duration(200)
+          .duration(150)
           .attr('r', d => {
-            if (d.id === currentUser) return 28;
-            return d.type === 'interest' ? 18 : 25;
+            if (d.id === currentUser) return 22;
+            return d.type === 'interest' ? 14 : 18;
           })
-          .attr('stroke-width', d => d.id === currentUser ? 4 : 3);
+          .attr('stroke-width', 2);
         
         // Show label for interest nodes on hover
         if (d.type === 'interest') {
@@ -219,16 +203,33 @@ const GraphVisualization = () => {
             .duration(200)
             .style('opacity', 1);
         }
+
+        // Show phone number tooltip for person nodes (other than current user)
+        if (d.type === 'person' && d.id !== currentUser && d.phone_number) {
+          tooltip
+            .style('opacity', 1)
+            .html(`💬 ${d.phone_number}`)
+            .style('left', (event.pageX + 10) + 'px')
+            .style('top', (event.pageY - 10) + 'px');
+        }
+      })
+      .on('mousemove', function(event, d) {
+        // Update tooltip position on mouse move
+        if (d.type === 'person' && d.id !== currentUser && d.phone_number) {
+          tooltip
+            .style('left', (event.pageX + 10) + 'px')
+            .style('top', (event.pageY - 10) + 'px');
+        }
       })
       .on('mouseout', function(event, d) {
         d3.select(this)
           .transition()
-          .duration(200)
+          .duration(150)
           .attr('r', d => {
-            if (d.id === currentUser) return 25;
-            return d.type === 'interest' ? 15 : 20;
+            if (d.id === currentUser) return 20;
+            return d.type === 'interest' ? 12 : 16;
           })
-          .attr('stroke-width', d => d.id === currentUser ? 3 : 2);
+          .attr('stroke-width', 1.5);
         
         // Hide label for interest nodes on mouseout
         if (d.type === 'interest') {
@@ -237,6 +238,9 @@ const GraphVisualization = () => {
             .duration(200)
             .style('opacity', 0);
         }
+
+        // Hide phone number tooltip
+        tooltip.style('opacity', 0);
       });
 
     simulation.on('tick', () => {
@@ -283,6 +287,11 @@ const GraphVisualization = () => {
     // Store reset function for button access
     svg.node().resetZoom = resetZoom;
 
+    // Cleanup function
+    return () => {
+      d3.selectAll('.phone-tooltip').remove();
+    };
+
   }, [graphData, currentUser]);
 
   const handleResetZoom = () => {
@@ -298,100 +307,147 @@ const GraphVisualization = () => {
     }
   };
 
+  // Signup Screen
+  if (showSignup) {
+    return <SignupScreen onSignupSuccess={handleSignupSuccess} onBackToLogin={handleBackToLogin} />;
+  }
+
   // Login Screen
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-8">
-        <div className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-2xl p-8 shadow-2xl max-w-md w-full">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-white mb-4 drop-shadow-lg">
+      <div className="min-h-screen bg-white flex items-center justify-center p-8">
+        <div className="max-w-md w-full">
+          <div className="text-center mb-12">
+            <h1 className="text-4xl font-serif text-gray-900 mb-4">
               Graph Explorer
             </h1>
-            <p className="text-blue-200">
-              Enter your username to explore your network
+            <p className="text-lg text-gray-600 font-serif">
+              Enter your user ID to explore your network
             </p>
           </div>
           
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-blue-200 mb-2">
-                Username
+              <label htmlFor="user_id" className="block text-sm font-medium text-gray-700 mb-2 font-serif">
+                User ID
               </label>
               <input
-                id="username"
+                id="user_id"
                 type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                value={user_id}
+                onChange={(e) => setUser_id(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Enter your username..."
-                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent backdrop-blur-sm"
+                placeholder="Enter your user ID..."
+                className="w-full px-4 py-3 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent font-serif"
                 autoFocus
               />
             </div>
             
             {loginError && (
-              <div className="text-red-300 text-sm text-center">
+              <div className="text-red-600 text-sm text-center font-serif">
                 {loginError}
               </div>
             )}
             
-            <button
-              onClick={handleLogin}
-              disabled={loading}
-              className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white font-medium rounded-lg transition-colors duration-200"
-            >
-              {loading ? 'Loading...' : 'Explore Network'}
-            </button>
+            <div className="space-y-3">
+              <button
+                onClick={handleLogin}
+                disabled={loading}
+                className="w-full px-4 py-3 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-400 text-white font-medium rounded-md transition-colors duration-200 font-serif"
+              >
+                {loading ? 'Loading...' : 'Explore Network'}
+              </button>
+              
+              <button
+                onClick={() => setShowSignup(true)}
+                className="w-full px-4 py-3 text-gray-600 hover:text-gray-900 font-serif transition-colors duration-200"
+              >
+                Set API Key
+              </button>
+            </div>
           </div>
           
-          <div className="mt-8 text-center text-blue-300 text-xs">
-            <p className="opacity-80">cutewels@eth-zurich</p>
+          <div className="mt-12 text-center text-gray-500 text-sm">
+            <p className="font-serif">cutewels@eth-zurich</p>
           </div>
         </div>
       </div>
     );
   }
 
+  // If in list view, show the InterestsList component
+  if (viewMode === 'list') {
+    return <InterestsList currentUser={currentUser} onLogout={handleLogout} />;
+  }
+
   // Main Graph View
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-8">
+    <div className="min-h-screen bg-white">
       {/* Header */}
-      <div className="text-center mb-8">
-        <div className="flex items-center justify-center gap-4 mb-4">
-          <h1 className="text-4xl font-bold text-white drop-shadow-lg">
-            Network of {currentUser}
-          </h1>
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-400/30 rounded-lg text-red-200 font-medium transition-all duration-200 backdrop-blur-sm"
-          >
-            Logout
-          </button>
+      <div className="border-b border-gray-200 bg-white">
+        <div className="max-w-7xl mx-auto px-8 py-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-serif text-gray-900">
+                poke
+              </h1>
+                <p className="text-lg text-gray-600 font-serif mt-1">
+                  Logged in as <span className="font-mono">{currentUser}</span>
+                </p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="flex bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode('graph')}
+                  className={`px-4 py-2 rounded-md font-serif transition-colors duration-200 ${
+                    viewMode === 'graph'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Graph View
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-4 py-2 rounded-md font-serif transition-colors duration-200 ${
+                    viewMode === 'list'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  List View
+                </button>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 text-gray-600 hover:text-gray-900 font-serif transition-colors duration-200"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
         </div>
-        <p className="text-lg text-blue-200 max-w-2xl mx-auto">
-          Exploring the connected component for {currentUser}
-        </p>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-6xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Graph Container - Centered */}
-          <div className="lg:col-span-2">
-            <div className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-white">Graph</h2>
-                <div className="flex gap-2">
+      <div className="max-w-7xl mx-auto px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Graph Container */}
+          <div className="lg:col-span-3">
+            <div className="bg-white border border-gray-200 rounded-lg p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-serif text-gray-900">Graph Visualization</h2>
+                <div className="flex gap-3">
                   <button
                     onClick={handleResetZoom}
-                    className="px-4 py-2 bg-white/20 hover:bg-white/30 border border-white/30 rounded-lg text-white font-medium transition-all duration-200 backdrop-blur-sm"
+                    className="px-4 py-2 text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md font-serif transition-colors duration-200"
                     disabled={loading}
                   >
                     Reset View
                   </button>
                   <button
                     onClick={() => fetchGraphData(currentUser)}
-                    className="px-4 py-2 bg-white/20 hover:bg-white/30 border border-white/30 rounded-lg text-white font-medium transition-all duration-200 backdrop-blur-sm"
+                    className="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-md font-serif transition-colors duration-200"
                     disabled={loading}
                   >
                     {loading ? 'Loading...' : 'Refresh'}
@@ -399,19 +455,19 @@ const GraphVisualization = () => {
                 </div>
               </div>
               
-              <div className="bg-black/20 rounded-xl p-4 border border-white/10">
+              <div className="bg-gray-50/50 rounded-lg p-4 border border-gray-100">
                 {loading && (
                   <div className="flex items-center justify-center h-96">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
                   </div>
                 )}
                 
                 {error && (
                   <div className="flex items-center justify-center h-96 text-center">
-                    <div className="text-red-300">
-                      <p className="text-lg font-medium mb-2">Error loading graph</p>
-                      <p className="text-sm opacity-80">{error}</p>
-                      <p className="text-xs mt-4 opacity-60">
+                    <div className="text-red-600">
+                      <p className="text-lg font-medium mb-2 font-serif">Error loading graph</p>
+                      <p className="text-sm text-gray-600 font-serif">{error}</p>
+                      <p className="text-xs mt-4 text-gray-500 font-serif">
                         Make sure your FastAPI server is running on localhost:1234
                       </p>
                     </div>
@@ -420,7 +476,7 @@ const GraphVisualization = () => {
                 
                 {!loading && !error && graphData && (
                   <div className="flex justify-center">
-                    <svg ref={svgRef} className="border border-white/10 rounded-lg"></svg>
+                    <svg ref={svgRef} className="border border-gray-100 rounded-lg bg-white shadow-sm"></svg>
                   </div>
                 )}
               </div>
@@ -430,67 +486,71 @@ const GraphVisualization = () => {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Stats Card */}
-            <div className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl">
-              <h3 className="text-lg font-semibold text-white mb-4">Network Statistics</h3>
+            <div className="bg-white border border-gray-200 rounded-lg p-6">
+              <h3 className="text-lg font-serif text-gray-900 mb-4">Network Statistics</h3>
               {graphData ? (
                 <div className="space-y-3">
-                  <div className="flex justify-between text-blue-200">
-                    <span>Nodes:</span>
-                    <span className="font-bold">{graphData.nodes.length}</span>
+                  <div className="flex justify-between text-gray-700">
+                    <span className="font-serif">Nodes:</span>
+                    <span className="font-semibold font-serif">{graphData.nodes.length}</span>
                   </div>
-                  <div className="flex justify-between text-blue-200">
-                    <span>Edges:</span>
-                    <span className="font-bold">{graphData.edges.length}</span>
+                  <div className="flex justify-between text-gray-700">
+                    <span className="font-serif">Edges:</span>
+                    <span className="font-semibold font-serif">{graphData.edges.length}</span>
                   </div>
-                  <div className="flex justify-between text-blue-200">
-                    <span>Interest Nodes:</span>
-                    <span className="font-bold">
+                  <div className="flex justify-between text-gray-700">
+                    <span className="font-serif">Interest Nodes:</span>
+                    <span className="font-semibold font-serif">
                       {graphData.nodes.filter(n => n.type === 'interest').length}
                     </span>
                   </div>
-                  <div className="flex justify-between text-blue-200">
-                    <span>People:</span>
-                    <span className="font-bold">
+                  <div className="flex justify-between text-gray-700">
+                    <span className="font-serif">People:</span>
+                    <span className="font-semibold font-serif">
                       {graphData.nodes.filter(n => n.type !== 'interest').length}
                     </span>
                   </div>
                 </div>
               ) : (
-                <p className="text-blue-200">No data loaded</p>
+                <p className="text-gray-600 font-serif">No data loaded</p>
               )}
             </div>
 
             {/* Instructions Card */}
-            <div className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl">
-              <h3 className="text-lg font-semibold text-white mb-4">Controls</h3>
-              <ul className="space-y-2 text-blue-200 text-sm">
+            <div className="bg-white border border-gray-200 rounded-lg p-6">
+              <h3 className="text-lg font-serif text-gray-900 mb-4">Controls</h3>
+              <ul className="space-y-3 text-gray-700 text-sm">
                 <li className="flex items-start">
-                  <span className="text-blue-400 mr-2">•</span>
-                  <strong>Mouse wheel:</strong> Zoom in/out
+                  <span className="text-gray-400 mr-2 font-serif">•</span>
+                  <span className="font-serif"><strong>Mouse wheel:</strong> Zoom in/out</span>
                 </li>
                 <li className="flex items-start">
-                  <span className="text-blue-400 mr-2">•</span>
-                  <strong>Click & drag background:</strong> Pan view
+                  <span className="text-gray-400 mr-2 font-serif">•</span>
+                  <span className="font-serif"><strong>Click & drag background:</strong> Pan view</span>
                 </li>
                 <li className="flex items-start">
-                  <span className="text-blue-400 mr-2">•</span>
-                  <strong>Drag nodes:</strong> Reposition them
+                  <span className="text-gray-400 mr-2 font-serif">•</span>
+                  <span className="font-serif"><strong>Drag nodes:</strong> Reposition them</span>
                 </li>
                 <li className="flex items-start">
-                  <span className="text-blue-400 mr-2">•</span>
-                  <strong>Hover interest nodes:</strong> Show labels
+                  <span className="text-gray-400 mr-2 font-serif">•</span>
+                  <span className="font-serif"><strong>Hover interest nodes:</strong> Show labels</span>
                 </li>
                 <li className="flex items-start">
-                  <span className="text-green-400 mr-2">•</span>
-                  <strong>Green nodes:</strong> Your node (highlighted)
+                  <span className="text-gray-400 mr-2 font-serif">•</span>
+                  <span className="font-serif"><strong>Hover person nodes:</strong> Show phone numbers</span>
                 </li>
                 <li className="flex items-start">
-                  <span className="text-orange-400 mr-2">•</span>
-                  <strong>Orange nodes:</strong> Interest types
+                  <span className="text-green-600 mr-2 font-serif">•</span>
+                  <span className="font-serif"><strong>Green nodes:</strong> Your node (highlighted)</span>
                 </li>
                 <li className="flex items-start">
-                  <span className="text-blue-400 mr-2">•</span>
-                  <strong>Blue nodes:</strong> Other people
+                  <span className="text-orange-500 mr-2 font-serif">•</span>
+                  <span className="font-serif"><strong>Orange nodes:</strong> Interest types</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-blue-500 mr-2 font-serif">•</span>
+                  <span className="font-serif"><strong>Blue nodes:</strong> Other people (shows phone numbers)</span>
                 </li>
               </ul>
             </div>
@@ -499,8 +559,12 @@ const GraphVisualization = () => {
       </div>
 
       {/* Footer */}
-      <div className="text-center mt-12 text-blue-300">
-        <p className="opacity-80">cutewels@eth-zurich</p>
+      <div className="border-t border-gray-200 bg-white">
+        <div className="max-w-7xl mx-auto px-8 py-6">
+          <div className="text-center text-gray-500">
+            <p className="font-serif">cutewels@eth-zurich</p>
+          </div>
+        </div>
       </div>
     </div>
   );

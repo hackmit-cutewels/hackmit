@@ -118,50 +118,9 @@ def create_comprehensive_example():
     save_graph(people_graph, GRAPH_FILE)
     return people_graph
 
-def test_smart_suggestions():
-    """Test the smart suggestions system with demo data"""
-    from util import get_smart_interest_suggestions
-    
-    print("\n=== TESTING SMART SUGGESTIONS ===\n")
-    
-    # Load the graph
-    people_graph = load_graph(GRAPH_FILE)
-    
-    # Test suggestions for each user with phone numbers
-    test_users = ['alice_tech', 'bob_sports', 'charlie_gaming', 'grace_gaming']
-    
-    for user in test_users:
-        if user in people_graph.nodes():
-            print(f"\n--- Suggestions for {user} ---")
-            suggestions = get_smart_interest_suggestions(
-                graph=people_graph,
-                person_id=user,
-                topics_file_path=TOPICS_FILE,
-                top_n=5
-            )
-            
-            if suggestions:
-                for i, suggestion in enumerate(suggestions, 1):
-                    print(f"{i}. {suggestion['interest']}")
-                    print(f"   Score: {suggestion['combined_score']:.3f} (Confidence: {suggestion['confidence']:.3f})")
-                    print(f"   Reason: {suggestion['reason']}")
-                    if suggestion['similar_users']:
-                        print(f"   Similar users: {', '.join(suggestion['similar_users'])}")
-                    print()
-            else:
-                print("No suggestions available")
-        else:
-            print(f"User {user} not found in graph")
-
 if __name__ == "__main__":
-    # Create demo data and test suggestions
-    print("Creating comprehensive demo data...")
-    people_graph = create_comprehensive_example()
-    
-    print("\nTesting smart suggestions...")
-    test_smart_suggestions()
-    
-    print("\n=== DEMO READY ===")
-    print("You can now test the suggestions in the frontend!")
-    print("Try logging in as: alice_tech, bob_sports, charlie_gaming, or grace_gaming")
+    people_graph = load_graph(GRAPH_FILE)
+    add_interest_edge(people_graph, 'diana_art', None, 'Learning')
+    save_graph(people_graph, GRAPH_FILE)
+    #create_comprehensive_example()
     
