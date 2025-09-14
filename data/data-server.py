@@ -104,6 +104,42 @@ async def add_person_with_interest(request: AddPersonRequest):
         raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+# helper for pairs_with_common_interest
+def load_people_tags(graph_file: str) -> dict[str, set[str]]:
+    G = load_graph(graph_file)
+    return {
+        p: {nbr for nbr in G.neighbors(p) if G.nodes[nbr].get("type") == "interest"}
+        for p, a in G.nodes(data=True) if a.get("type") == "person"
+    }
+
+@app.get("/pairs_with_common_interest")
+def pairs(threshold: float = Query(0.2, ge=0.0, le=1.0),
+          graph_file: str = Query(GRAPH_FILE)):
+    pt = load_people_tags(graph_file)
+    people = sorted(pt)
+    tags = sorted({t for ts in pt.values() for t in ts})
+    B = nx.Graph()
+    B.add_nodes_from(people, bipartite="people")
+    B.add_nodes_from(tags, bipartite="tags")
+    for p, ts in pt.items():
+        for t in ts:
+            B.add_edge(p, t)
+    results = []
+    if len(people) >= 2:
+        for u, v, s in jaccard_coefficient(B, combinations(people, 2)):
+            s = float(s)
+            if s >= threshold:
+                t1, t2 = pt[u], pt[v]
+                results.append({
+                    "person1": u,
+                    "person2": v,
+                    "person1_interests": sorted(t1),
+                    "person2_interests": sorted(t2),
+                    "shared_interests": sorted(t1 & t2),
+                    "jaccard": round(s, 6),
+                })
+    return {"threshold": threshold, "count": len(results), "pairs": results}
     
 if __name__ == "__main__":
     import uvicorn
