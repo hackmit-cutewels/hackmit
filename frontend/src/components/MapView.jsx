@@ -512,7 +512,7 @@ const MapView = ({ currentUser, onLogout, onViewModeChange }) => {
       <div className="border-t border-gray-200 bg-white">
         <div className="max-w-7xl mx-auto px-8 py-6">
           <div className="text-center text-gray-500">
-            <img src="/NETZ-LOGO.svg" alt="NETZ Logo" className="h-8 mx-auto" />
+            <img src="/NETZ-LOGO.svg" alt="NETZ Logo" className="h-20 mx-auto" />
           </div>
         </div>
       </div>
