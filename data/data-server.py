@@ -8,6 +8,8 @@ from util import add_best_interest_matches, load_graph, save_graph, add_place_ed
 from fastapi import Query
 from itertools import combinations
 from geopy.distance import geodesic
+from typing import Iterable, Tuple
+from anthropic import Anthropic
 
 GRAPH_FILE = 'graph.json'
 TOPICS_FILE = 'interests.txt'
@@ -327,10 +329,9 @@ def get_pairs_with_common_interest(threshold: float = Query(0.2, ge=0.0, le=1.0)
                 results.append({
                     "person1": person1,
                     "person2": person2,
-                    "description": f"Shared interests: {', '.join(sorted(shared_interests))}",
+                    "description": why,
                 })
 
-    results.sort(key=lambda x: (-x["average"], -x["jaccard"], x["person1"], x["person2"]))
     return {"threshold": threshold, "count": len(results), "pairs": results}
 
 @app.get("/get_pairs")
