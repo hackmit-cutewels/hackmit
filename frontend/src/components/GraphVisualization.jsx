@@ -15,7 +15,7 @@ const GraphVisualization = () => {
   const fetchGraphData = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8000/api/graph-data');
+      const response = await fetch('http://localhost:1234/api/graph_data');
       if (!response.ok) {
         throw new Error('Failed to fetch graph data');
       }
@@ -41,29 +41,63 @@ const GraphVisualization = () => {
     
     svg.attr('width', width).attr('height', height);
 
-    console.log(graphData.nodes)
+    console.log('Nodes:', graphData.nodes);
+    console.log('Edges:', graphData.edges);
+
+    // Create zoom behavior
+    const zoom = d3.zoom()
+      .scaleExtent([0.1, 4])
+      .on('zoom', (event) => {
+        container.attr('transform', event.transform);
+      });
+
+    // Apply zoom to svg
+    svg.call(zoom);
+
+    // Create a container group for all graph elements
+    const container = svg.append('g');
+
     // Create simulation
     const simulation = d3.forceSimulation(graphData.nodes)
-      .force('link', d3.forceLink(graphData.edges).id(d => d.id).distance(80))
+      .force('link', d3.forceLink(graphData.edges)
+          .id(d => d.id)
+          .distance(80))
       .force('charge', d3.forceManyBody().strength(-300))
       .force('center', d3.forceCenter(width / 2, height / 2));
 
     // Create gradient definitions
     const defs = svg.append('defs');
     
-    const gradient = defs.append('radialGradient')
+    // Gradient for regular nodes
+    const nodeGradient = defs.append('radialGradient')
       .attr('id', 'nodeGradient')
       .attr('cx', '30%')
       .attr('cy', '30%');
     
-    gradient.append('stop')
+    nodeGradient.append('stop')
       .attr('offset', '0%')
       .attr('stop-color', '#ffffff')
       .attr('stop-opacity', 0.8);
     
-    gradient.append('stop')
+    nodeGradient.append('stop')
       .attr('offset', '100%')
       .attr('stop-color', '#3b82f6')
+      .attr('stop-opacity', 0.6);
+
+    // Gradient for interest nodes
+    const interestGradient = defs.append('radialGradient')
+      .attr('id', 'interestGradient')
+      .attr('cx', '30%')
+      .attr('cy', '30%');
+    
+    interestGradient.append('stop')
+      .attr('offset', '0%')
+      .attr('stop-color', '#fbbf24')
+      .attr('stop-opacity', 0.8);
+    
+    interestGradient.append('stop')
+      .attr('offset', '100%')
+      .attr('stop-color', '#f59e0b')
       .attr('stop-opacity', 0.6);
 
     // Create glow filter
@@ -81,7 +115,7 @@ const GraphVisualization = () => {
       .attr('in', 'SourceGraphic');
 
     // Create links
-    const link = svg.append('g')
+    const link = container.append('g')
       .attr('class', 'links')
       .selectAll('line')
       .data(graphData.edges)
@@ -90,15 +124,15 @@ const GraphVisualization = () => {
       .attr('stroke-width', 2)
       .attr('filter', 'url(#glow)');
 
-    // Create nodes
-    const node = svg.append('g')
+    // Create nodes with different styles based on type
+    const node = container.append('g')
       .attr('class', 'nodes')
       .selectAll('circle')
       .data(graphData.nodes)
       .enter().append('circle')
-      .attr('r', 20)
-      .attr('fill', 'url(#nodeGradient)')
-      .attr('stroke', 'rgba(255, 255, 255, 0.8)')
+      .attr('r', d => d.type === 'interest' ? 15 : 20)
+      .attr('fill', d => d.type === 'interest' ? 'url(#interestGradient)' : 'url(#nodeGradient)')
+      .attr('stroke', d => d.type === 'interest' ? 'rgba(251, 191, 36, 0.8)' : 'rgba(255, 255, 255, 0.8)')
       .attr('stroke-width', 2)
       .attr('filter', 'url(#glow)')
       .style('cursor', 'pointer')
@@ -107,8 +141,8 @@ const GraphVisualization = () => {
         .on('drag', dragged)
         .on('end', dragended));
 
-    // Add labels
-    const label = svg.append('g')
+    // Add labels - hide for interest nodes by default
+    const label = container.append('g')
       .attr('class', 'labels')
       .selectAll('text')
       .data(graphData.nodes)
@@ -120,23 +154,40 @@ const GraphVisualization = () => {
       .attr('font-size', '12px')
       .attr('font-weight', 'bold')
       .attr('filter', 'url(#glow)')
-      .style('pointer-events', 'none');
+      .style('pointer-events', 'none')
+      .style('opacity', d => d.type === 'interest' ? 0 : 1);
 
-    // Add hover effects
+    // Add hover effects with different behaviors for interest nodes
     node
       .on('mouseover', function(event, d) {
         d3.select(this)
           .transition()
           .duration(200)
-          .attr('r', 25)
+          .attr('r', d.type === 'interest' ? 18 : 25)
           .attr('stroke-width', 3);
+        
+        // Show label for interest nodes on hover
+        if (d.type === 'interest') {
+          label.filter(labelData => labelData.id === d.id)
+            .transition()
+            .duration(200)
+            .style('opacity', 1);
+        }
       })
       .on('mouseout', function(event, d) {
         d3.select(this)
           .transition()
           .duration(200)
-          .attr('r', 20)
+          .attr('r', d.type === 'interest' ? 15 : 20)
           .attr('stroke-width', 2);
+        
+        // Hide label for interest nodes on mouseout
+        if (d.type === 'interest') {
+          label.filter(labelData => labelData.id === d.id)
+            .transition()
+            .duration(200)
+            .style('opacity', 0);
+        }
       });
 
     simulation.on('tick', () => {
@@ -172,17 +223,35 @@ const GraphVisualization = () => {
       d.fy = null;
     }
 
+    // Add reset zoom button functionality
+    const resetZoom = () => {
+      svg.transition().duration(750).call(
+        zoom.transform,
+        d3.zoomIdentity
+      );
+    };
+
+    // Store reset function for button access
+    svg.node().resetZoom = resetZoom;
+
   }, [graphData]);
+
+  const handleResetZoom = () => {
+    const svg = d3.select(svgRef.current);
+    if (svg.node().resetZoom) {
+      svg.node().resetZoom();
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-8">
       {/* Header */}
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold text-white mb-4 drop-shadow-lg">
-          cutewels finder
+            cool shit
         </h1>
         <p className="text-lg text-blue-200 max-w-2xl mx-auto">
-            your interests
+            you 
         </p>
       </div>
 
@@ -193,14 +262,23 @@ const GraphVisualization = () => {
           <div className="lg:col-span-2">
             <div className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-white">Graph Visualization</h2>
-                <button
-                  onClick={fetchGraphData}
-                  className="px-4 py-2 bg-white/20 hover:bg-white/30 border border-white/30 rounded-lg text-white font-medium transition-all duration-200 backdrop-blur-sm"
-                  disabled={loading}
-                >
-                  {loading ? 'Loading...' : 'Refresh'}
-                </button>
+                <h2 className="text-xl font-semibold text-white">Graph</h2>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleResetZoom}
+                    className="px-4 py-2 bg-white/20 hover:bg-white/30 border border-white/30 rounded-lg text-white font-medium transition-all duration-200 backdrop-blur-sm"
+                    disabled={loading}
+                  >
+                    Reset View
+                  </button>
+                  <button
+                    onClick={fetchGraphData}
+                    className="px-4 py-2 bg-white/20 hover:bg-white/30 border border-white/30 rounded-lg text-white font-medium transition-all duration-200 backdrop-blur-sm"
+                    disabled={loading}
+                  >
+                    {loading ? 'Loading...' : 'Refresh'}
+                  </button>
+                </div>
               </div>
               
               <div className="bg-black/20 rounded-xl p-4 border border-white/10">
@@ -216,7 +294,7 @@ const GraphVisualization = () => {
                       <p className="text-lg font-medium mb-2">Error loading graph</p>
                       <p className="text-sm opacity-80">{error}</p>
                       <p className="text-xs mt-4 opacity-60">
-                        Make sure your FastAPI server is running on localhost:8000
+                        Make sure your FastAPI server is running on localhost:1234
                       </p>
                     </div>
                   </div>
@@ -224,7 +302,7 @@ const GraphVisualization = () => {
                 
                 {!loading && !error && graphData && (
                   <div className="flex justify-center">
-                    <svg ref={svgRef}></svg>
+                    <svg ref={svgRef} className="border border-white/10 rounded-lg"></svg>
                   </div>
                 )}
               </div>
@@ -235,7 +313,7 @@ const GraphVisualization = () => {
           <div className="space-y-6">
             {/* Stats Card */}
             <div className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl">
-              <h3 className="text-lg font-semibold text-white mb-4">Graph Statistics</h3>
+              <h3 className="text-lg font-semibold text-white mb-4">Statistics</h3>
               {graphData ? (
                 <div className="space-y-3">
                   <div className="flex justify-between text-blue-200">
@@ -245,6 +323,12 @@ const GraphVisualization = () => {
                   <div className="flex justify-between text-blue-200">
                     <span>Edges:</span>
                     <span className="font-bold">{graphData.edges.length}</span>
+                  </div>
+                  <div className="flex justify-between text-blue-200">
+                    <span>Interest Nodes:</span>
+                    <span className="font-bold">
+                      {graphData.nodes.filter(n => n.type === 'interest').length}
+                    </span>
                   </div>
                   <div className="flex justify-between text-blue-200">
                     <span>Density:</span>
@@ -263,38 +347,33 @@ const GraphVisualization = () => {
 
             {/* Instructions Card */}
             <div className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl">
-              <h3 className="text-lg font-semibold text-white mb-4">Instructions</h3>
+              <h3 className="text-lg font-semibold text-white mb-4">Other</h3>
               <ul className="space-y-2 text-blue-200 text-sm">
                 <li className="flex items-start">
                   <span className="text-blue-400 mr-2">•</span>
-                  Drag nodes to reposition them
+                  <strong>Mouse wheel:</strong> Zoom in/out
                 </li>
                 <li className="flex items-start">
                   <span className="text-blue-400 mr-2">•</span>
-                  Hover over nodes to see effects
+                  <strong>Click & drag background:</strong> Pan view
                 </li>
                 <li className="flex items-start">
                   <span className="text-blue-400 mr-2">•</span>
-                  Click refresh to reload data
+                  <strong>Drag nodes:</strong> Reposition them
                 </li>
                 <li className="flex items-start">
                   <span className="text-blue-400 mr-2">•</span>
-                  Nodes auto-arrange using physics simulation
+                  <strong>Hover interest nodes:</strong> Show labels
+                </li>
+                <li className="flex items-start">
+                  <span className="text-orange-400 mr-2">•</span>
+                  <strong>Orange nodes:</strong> Interest types (smaller)
+                </li>
+                <li className="flex items-start">
+                  <span className="text-blue-400 mr-2">•</span>
+                  <strong>Blue nodes:</strong> Regular nodes
                 </li>
               </ul>
-            </div>
-
-            {/* API Info Card */}
-            <div className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl">
-              <h3 className="text-lg font-semibold text-white mb-4">API Endpoint</h3>
-              <div className="bg-black/30 rounded-lg p-3 border border-white/10">
-                <code className="text-green-300 text-sm break-all">
-                  GET localhost:8000/api/graph_data
-                </code>
-              </div>
-              <p className="text-blue-200 text-sm mt-3">
-                Fetches graph data with nodes and edges from your FastAPI backend
-              </p>
             </div>
           </div>
         </div>
@@ -302,7 +381,7 @@ const GraphVisualization = () => {
 
       {/* Footer */}
       <div className="text-center mt-12 text-blue-300">
-        <p className="opacity-80">cutewels</p>
+        <p className="opacity-80">cutewels@eth-zurich</p>
       </div>
     </div>
   );

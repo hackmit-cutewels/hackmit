@@ -19,13 +19,40 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/api/graph_data")
 def get_graph_data():
-    # Create a sample graph
-    G = nx.star_graph(4)
-    # Convert to a JSON-serializable format
-    nodes = [{"id": node, "label": f"Node {node}"} for node in G.nodes()]
-    edges = [{"from": u, "to": v} for u, v in G.edges()]
+    people_graph = load_graph(GRAPH_FILE)
+    
+    # Convert nodes to JSON-serializable format
+    nodes = []
+    for node_id, node_data in people_graph.nodes(data=True):
+        node = {
+            "id": node_id,
+            "type": node_data.get("type", "unknown"),
+            "label": node_id  # Use the node_id as label, or customize as needed
+        }
+        # Add any additional node attributes if they exist
+        if "name" in node_data:
+            node["name"] = node_data["name"]
+        if "description" in node_data:
+            node["description"] = node_data["description"]
+        nodes.append(node)
+    
+    # Convert edges to JSON-serializable format
+    edges = []
+    for source, target, edge_data in people_graph.edges(data=True):
+        edge = {
+            "source": source,
+            "target": target
+        }
+        # Add edge attributes if they exist
+        if "relationship" in edge_data:
+            edge["relationship"] = edge_data["relationship"]
+        if "weight" in edge_data:
+            edge["weight"] = edge_data["weight"]
+        edges.append(edge)
+    
     return {"nodes": nodes, "edges": edges}
 
 
