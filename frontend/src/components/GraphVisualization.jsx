@@ -5,17 +5,35 @@ import * as d3 from 'd3';
 const GraphVisualization = () => {
   const svgRef = useRef(null);
   const [graphData, setGraphData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [username, setUsername] = useState('');
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loginError, setLoginError] = useState(null);
 
-  useEffect(() => {
-    fetchGraphData();
-  }, []);
+  const handleLogin = async () => {
+    if (!username.trim()) {
+      setLoginError('Please enter a username');
+      return;
+    }
+    
+    setCurrentUser(username.trim());
+    setLoginError(null);
+    await fetchGraphData(username.trim());
+  };
 
-  const fetchGraphData = async () => {
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setUsername('');
+    setGraphData(null);
+    setError(null);
+    setLoginError(null);
+  };
+
+  const fetchGraphData = async (userId) => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:1234/api/graph_data');
+      const response = await fetch(`http://localhost:1234/api/graph_data?user_id=${encodeURIComponent(userId)}`);
       if (!response.ok) {
         throw new Error('Failed to fetch graph data');
       }
@@ -100,6 +118,22 @@ const GraphVisualization = () => {
       .attr('stop-color', '#f59e0b')
       .attr('stop-opacity', 0.6);
 
+    // Gradient for current user node
+    const userGradient = defs.append('radialGradient')
+      .attr('id', 'userGradient')
+      .attr('cx', '30%')
+      .attr('cy', '30%');
+    
+    userGradient.append('stop')
+      .attr('offset', '0%')
+      .attr('stop-color', '#ffffff')
+      .attr('stop-opacity', 0.9);
+    
+    userGradient.append('stop')
+      .attr('offset', '100%')
+      .attr('stop-color', '#10b981')
+      .attr('stop-opacity', 0.7);
+
     // Create glow filter
     const filter = defs.append('filter')
       .attr('id', 'glow');
@@ -130,10 +164,19 @@ const GraphVisualization = () => {
       .selectAll('circle')
       .data(graphData.nodes)
       .enter().append('circle')
-      .attr('r', d => d.type === 'interest' ? 15 : 20)
-      .attr('fill', d => d.type === 'interest' ? 'url(#interestGradient)' : 'url(#nodeGradient)')
-      .attr('stroke', d => d.type === 'interest' ? 'rgba(251, 191, 36, 0.8)' : 'rgba(255, 255, 255, 0.8)')
-      .attr('stroke-width', 2)
+      .attr('r', d => {
+        if (d.id === currentUser) return 25;
+        return d.type === 'interest' ? 15 : 20;
+      })
+      .attr('fill', d => {
+        if (d.id === currentUser) return 'url(#userGradient)';
+        return d.type === 'interest' ? 'url(#interestGradient)' : 'url(#nodeGradient)';
+      })
+      .attr('stroke', d => {
+        if (d.id === currentUser) return 'rgba(16, 185, 129, 0.9)';
+        return d.type === 'interest' ? 'rgba(251, 191, 36, 0.8)' : 'rgba(255, 255, 255, 0.8)';
+      })
+      .attr('stroke-width', d => d.id === currentUser ? 3 : 2)
       .attr('filter', 'url(#glow)')
       .style('cursor', 'pointer')
       .call(d3.drag()
@@ -150,8 +193,8 @@ const GraphVisualization = () => {
       .text(d => d.label)
       .attr('text-anchor', 'middle')
       .attr('dy', '.35em')
-      .attr('fill', 'rgba(255, 255, 255, 0.9)')
-      .attr('font-size', '12px')
+      .attr('fill', d => d.id === currentUser ? 'rgba(16, 185, 129, 0.9)' : 'rgba(255, 255, 255, 0.9)')
+      .attr('font-size', d => d.id === currentUser ? '14px' : '12px')
       .attr('font-weight', 'bold')
       .attr('filter', 'url(#glow)')
       .style('pointer-events', 'none')
@@ -163,8 +206,11 @@ const GraphVisualization = () => {
         d3.select(this)
           .transition()
           .duration(200)
-          .attr('r', d.type === 'interest' ? 18 : 25)
-          .attr('stroke-width', 3);
+          .attr('r', d => {
+            if (d.id === currentUser) return 28;
+            return d.type === 'interest' ? 18 : 25;
+          })
+          .attr('stroke-width', d => d.id === currentUser ? 4 : 3);
         
         // Show label for interest nodes on hover
         if (d.type === 'interest') {
@@ -178,8 +224,11 @@ const GraphVisualization = () => {
         d3.select(this)
           .transition()
           .duration(200)
-          .attr('r', d.type === 'interest' ? 15 : 20)
-          .attr('stroke-width', 2);
+          .attr('r', d => {
+            if (d.id === currentUser) return 25;
+            return d.type === 'interest' ? 15 : 20;
+          })
+          .attr('stroke-width', d => d.id === currentUser ? 3 : 2);
         
         // Hide label for interest nodes on mouseout
         if (d.type === 'interest') {
@@ -234,7 +283,7 @@ const GraphVisualization = () => {
     // Store reset function for button access
     svg.node().resetZoom = resetZoom;
 
-  }, [graphData]);
+  }, [graphData, currentUser]);
 
   const handleResetZoom = () => {
     const svg = d3.select(svgRef.current);
@@ -243,15 +292,84 @@ const GraphVisualization = () => {
     }
   };
 
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleLogin();
+    }
+  };
+
+  // Login Screen
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-8">
+        <div className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-2xl p-8 shadow-2xl max-w-md w-full">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-white mb-4 drop-shadow-lg">
+              Graph Explorer
+            </h1>
+            <p className="text-blue-200">
+              Enter your username to explore your network
+            </p>
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="username" className="block text-sm font-medium text-blue-200 mb-2">
+                Username
+              </label>
+              <input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Enter your username..."
+                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent backdrop-blur-sm"
+                autoFocus
+              />
+            </div>
+            
+            {loginError && (
+              <div className="text-red-300 text-sm text-center">
+                {loginError}
+              </div>
+            )}
+            
+            <button
+              onClick={handleLogin}
+              disabled={loading}
+              className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white font-medium rounded-lg transition-colors duration-200"
+            >
+              {loading ? 'Loading...' : 'Explore Network'}
+            </button>
+          </div>
+          
+          <div className="mt-8 text-center text-blue-300 text-xs">
+            <p className="opacity-80">cutewels@eth-zurich</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Main Graph View
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-8">
       {/* Header */}
       <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-white mb-4 drop-shadow-lg">
-            cool shit
-        </h1>
+        <div className="flex items-center justify-center gap-4 mb-4">
+          <h1 className="text-4xl font-bold text-white drop-shadow-lg">
+            Network of {currentUser}
+          </h1>
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-400/30 rounded-lg text-red-200 font-medium transition-all duration-200 backdrop-blur-sm"
+          >
+            Logout
+          </button>
+        </div>
         <p className="text-lg text-blue-200 max-w-2xl mx-auto">
-            you 
+          Exploring the connected component for {currentUser}
         </p>
       </div>
 
@@ -272,7 +390,7 @@ const GraphVisualization = () => {
                     Reset View
                   </button>
                   <button
-                    onClick={fetchGraphData}
+                    onClick={() => fetchGraphData(currentUser)}
                     className="px-4 py-2 bg-white/20 hover:bg-white/30 border border-white/30 rounded-lg text-white font-medium transition-all duration-200 backdrop-blur-sm"
                     disabled={loading}
                   >
@@ -313,7 +431,7 @@ const GraphVisualization = () => {
           <div className="space-y-6">
             {/* Stats Card */}
             <div className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl">
-              <h3 className="text-lg font-semibold text-white mb-4">Statistics</h3>
+              <h3 className="text-lg font-semibold text-white mb-4">Network Statistics</h3>
               {graphData ? (
                 <div className="space-y-3">
                   <div className="flex justify-between text-blue-200">
@@ -331,12 +449,9 @@ const GraphVisualization = () => {
                     </span>
                   </div>
                   <div className="flex justify-between text-blue-200">
-                    <span>Density:</span>
+                    <span>People:</span>
                     <span className="font-bold">
-                      {graphData.nodes.length > 1 
-                        ? ((2 * graphData.edges.length) / (graphData.nodes.length * (graphData.nodes.length - 1))).toFixed(2)
-                        : '0.00'
-                      }
+                      {graphData.nodes.filter(n => n.type !== 'interest').length}
                     </span>
                   </div>
                 </div>
@@ -347,7 +462,7 @@ const GraphVisualization = () => {
 
             {/* Instructions Card */}
             <div className="backdrop-blur-lg bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl">
-              <h3 className="text-lg font-semibold text-white mb-4">Other</h3>
+              <h3 className="text-lg font-semibold text-white mb-4">Controls</h3>
               <ul className="space-y-2 text-blue-200 text-sm">
                 <li className="flex items-start">
                   <span className="text-blue-400 mr-2">•</span>
@@ -366,12 +481,16 @@ const GraphVisualization = () => {
                   <strong>Hover interest nodes:</strong> Show labels
                 </li>
                 <li className="flex items-start">
+                  <span className="text-green-400 mr-2">•</span>
+                  <strong>Green nodes:</strong> Your node (highlighted)
+                </li>
+                <li className="flex items-start">
                   <span className="text-orange-400 mr-2">•</span>
-                  <strong>Orange nodes:</strong> Interest types (smaller)
+                  <strong>Orange nodes:</strong> Interest types
                 </li>
                 <li className="flex items-start">
                   <span className="text-blue-400 mr-2">•</span>
-                  <strong>Blue nodes:</strong> Regular nodes
+                  <strong>Blue nodes:</strong> Other people
                 </li>
               </ul>
             </div>

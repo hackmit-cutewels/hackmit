@@ -24,41 +24,73 @@ app.add_middleware(
 )
 
 
-@app.get("/api/graph_data")
-def get_graph_data():
-    people_graph = load_graph(GRAPH_FILE)
-    
-    # Convert nodes to JSON-serializable format
-    nodes = []
-    for node_id, node_data in people_graph.nodes(data=True):
-        node = {
-            "id": node_id,
-            "type": node_data.get("type", "unknown"),
-            "label": node_id  # Use the node_id as label, or customize as needed
-        }
-        # Add any additional node attributes if they exist
-        if "name" in node_data:
-            node["name"] = node_data["name"]
-        if "description" in node_data:
-            node["description"] = node_data["description"]
-        nodes.append(node)
-    
-    # Convert edges to JSON-serializable format
-    edges = []
-    for source, target, edge_data in people_graph.edges(data=True):
-        edge = {
-            "source": source,
-            "target": target
-        }
-        # Add edge attributes if they exist
-        if "relationship" in edge_data:
-            edge["relationship"] = edge_data["relationship"]
-        if "weight" in edge_data:
-            edge["weight"] = edge_data["weight"]
-        edges.append(edge)
-    
-    return {"nodes": nodes, "edges": edges}
+# Get the graph data for a user
+# Returns all direct neighbors of the user with node type "interest"
+# and only those nodes of type "person" where phone_number is not None that share at least one interest with the user
+# If no user_id is provided, returns the empty graph:
 
+@app.get("/api/graph_data")
+def get_graph_data(user_id: Optional[str] = None):
+    people_graph = load_graph(GRAPH_FILE)
+
+    if not user_id:
+        # No user_id: return empty graph
+        return {"nodes": [], "edges": []}
+
+    if user_id not in people_graph.nodes():
+        return {"nodes": [], "edges": [], "error": f"User '{user_id}' not found in graph"}
+
+    # Get all direct neighbors of the user
+    neighbors = set(people_graph.neighbors(user_id))
+
+    # Interests: direct neighbors of type "interest"
+    interest_nodes = [
+        n for n in neighbors
+        if people_graph.nodes[n].get("type") == "interest"
+    ]
+
+    # For each interest, find people (with phone_number) who share that interest (excluding the user)
+    person_nodes = set()
+    for interest in interest_nodes:
+        for person in people_graph.neighbors(interest):
+            if person == user_id:
+                continue
+            node_data = people_graph.nodes[person]
+            if node_data.get("type") == "person" and node_data.get("phone_number"):
+                person_nodes.add(person)
+
+    # Build node list: user, their interests, and matching people
+    node_ids = set([user_id]) | set(interest_nodes) | person_nodes
+    nodes = []
+    for n in node_ids:
+        node_data = people_graph.nodes[n]
+        node = {
+            "id": n,
+            "type": node_data.get("type", "unknown"),
+            "label": n
+        }
+        if "phone_number" in node_data:
+            node["phone_number"] = node_data["phone_number"]
+        nodes.append(node)
+
+    # Build edge list: only edges between user and their interests, and between those interests and matching people
+    edges = []
+    # Edges from user to their interests
+    for interest in interest_nodes:
+        if people_graph.has_edge(user_id, interest):
+            edges.append({"source": user_id, "target": interest})
+        if people_graph.is_directed() and people_graph.has_edge(interest, user_id):
+            edges.append({"source": interest, "target": user_id})
+    # Edges from interests to matching people
+    for interest in interest_nodes:
+        for person in people_graph.neighbors(interest):
+            if person in person_nodes:
+                if people_graph.has_edge(interest, person):
+                    edges.append({"source": interest, "target": person})
+                if people_graph.is_directed() and people_graph.has_edge(person, interest):
+                    edges.append({"source": person, "target": interest})
+
+    return {"nodes": nodes, "edges": edges}
 
 # Request/response models
 class AddPersonRequest(BaseModel):
@@ -148,6 +180,9 @@ def pairs(threshold: float = Query(0.2, ge=0.0, le=1.0),
                     "jaccard": round(s, 6),
                 })
     return {"threshold": threshold, "count": len(results), "pairs": results}
+
+
+
     
 if __name__ == "__main__":
     import uvicorn

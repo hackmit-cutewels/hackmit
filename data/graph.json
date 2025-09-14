@@ -1,0 +1,134 @@
+{
+    "directed": false,
+    "multigraph": false,
+    "graph": {},
+    "nodes": [
+        {
+            "type": "person",
+            "id": "abcdefgh1234567",
+            "phone_number": "1234567890"
+        },
+        {
+            "type": "interest",
+            "id": "Computer programming"
+        },
+        {
+            "type": "interest",
+            "id": "Competitive dance"
+        },
+        {
+            "type": "interest",
+            "id": "Competitive eating"
+        },
+        {
+            "type": "interest",
+            "id": "Learning"
+        },
+        {
+            "type": "interest",
+            "id": "Models"
+        },
+        {
+            "type": "interest",
+            "id": "Robotics"
+        },
+        {
+            "type": "interest",
+            "id": "Video gaming"
+        },
+        {
+            "type": "interest",
+            "id": "Video Games"
+        },
+        {
+            "type": "interest",
+            "id": "Games"
+        },
+        {
+            "type": "interest",
+            "id": "Hiking"
+        },
+        {
+            "type": "interest",
+            "id": "Mountaineering"
+        },
+        {
+            "type": "interest",
+            "id": "Camping"
+        },
+        {
+            "type": "interest",
+            "id": "Video game"
+        },
+        {
+            "type": "person",
+            "id": "user_02"
+        },
+        {
+            "type": "interest",
+            "id": "Football"
+        }
+    ],
+    "links": [
+        {
+            "source": "abcdefgh1234567",
+            "target": "Computer programming"
+        },
+        {
+            "source": "abcdefgh1234567",
+            "target": "Competitive dance"
+        },
+        {
+            "source": "abcdefgh1234567",
+            "target": "Competitive eating"
+        },
+        {
+            "source": "abcdefgh1234567",
+            "target": "Learning"
+        },
+        {
+            "source": "abcdefgh1234567",
+            "target": "Models"
+        },
+        {
+            "source": "abcdefgh1234567",
+            "target": "Robotics"
+        },
+        {
+            "source": "abcdefgh1234567",
+            "target": "Video gaming"
+        },
+        {
+            "source": "abcdefgh1234567",
+            "target": "Video Games"
+        },
+        {
+            "source": "abcdefgh1234567",
+            "target": "Games"
+        },
+        {
+            "source": "abcdefgh1234567",
+            "target": "Hiking"
+        },
+        {
+            "source": "abcdefgh1234567",
+            "target": "Mountaineering"
+        },
+        {
+            "source": "abcdefgh1234567",
+            "target": "Camping"
+        },
+        {
+            "source": "abcdefgh1234567",
+            "target": "Video game"
+        },
+        {
+            "source": "Computer programming",
+            "target": "user_02"
+        },
+        {
+            "source": "user_02",
+            "target": "Football"
+        }
+    ]
+}
