@@ -3,10 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
 import networkx as nx
+from networkx.algorithms.link_prediction import jaccard_coefficient
 from util import add_best_interest_matches, load_graph, save_graph, add_place_edge
 from fastapi import Query
 from itertools import combinations
-from jaccard import jaccard_coefficient
 from geopy.distance import geodesic
 
 GRAPH_FILE = 'graph.json'
