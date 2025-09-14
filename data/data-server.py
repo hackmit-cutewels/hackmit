@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Optional
 import networkx as nx
 from util import add_best_interest_matches, load_graph, save_graph, add_place_edge
 
@@ -59,10 +60,12 @@ def get_graph_data():
 # Request/response models
 class AddPersonRequest(BaseModel):
     person_id: str
+    phone_number: Optional[str]
     query: str
 
 class AddPersonWithPlaceRequest(BaseModel):
     person_id: str
+    phone_number: Optional[str]
     latitude: float
     longitude: float
 
@@ -72,6 +75,7 @@ async def add_person_with_place(request: AddPersonWithPlaceRequest):
     add_place_edge(
         graph=people_graph,
         person_id=request.person_id,
+        phone_number = request.phone_number,
         latitude=request.latitude,
         longitude=request.longitude
     )
@@ -92,6 +96,7 @@ async def add_person_with_interest(request: AddPersonRequest):
             graph=people_graph,
             person_id=request.person_id,
             query=request.query,
+            phone_number=request.phone_number,
             topics_file_path=TOPICS_FILE,
             top_n=3,
             score_threshold=0.4

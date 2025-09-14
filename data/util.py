@@ -3,6 +3,7 @@ import torch
 import networkx as nx 
 import json
 from networkx.readwrite import json_graph
+from typing import Optional
 
 GRAPH_FILE = 'graph.json'
 TOPICS_FILE = 'interests.txt'
@@ -91,32 +92,32 @@ def save_graph(graph: nx.Graph, file_path: str):
         json.dump(data, f, indent=4)
     print(f"Graph saved to {file_path}")
 
-def add_interest_edge(graph: nx.Graph, person_id: str, interest: str):
+def add_interest_edge(graph: nx.Graph, person_id: str, phone_number: Optional[str], interest: str):
     """
     Adds nodes and an edge between a person and an interest.
     Assigns a 'type' attribute to each node for easier identification.
     """
     # networkx handles node creation automatically if they don't exist
-    graph.add_node(person_id, type='person')
+    graph.add_node(person_id, type='person', phone_number=phone_number)
     graph.add_node(interest, type='interest')
     
     # Add the edge connecting the person to their interest
     graph.add_edge(person_id, interest)
     print(f"Added edge: {person_id} -> {interest}")
 
-def add_place_edge(graph: nx.Graph, person_id: str, latitude: float, longitude: float):
+def add_place_edge(graph: nx.Graph, phone_number: Optional[str], person_id: str, latitude: float, longitude: float):
     """
     Adds a node and an edge between a person and a place.
     Assigns a 'type' attribute to each node for easier identification.
     """
-    graph.add_node(person_id, type='person')
+    graph.add_node(person_id, type='person', phone_number=phone_number)
     graph.add_node((latitude, longitude), type='place') 
     
     # Add the edge connecting the person to the place
     graph.add_edge(person_id, (latitude, longitude))
     print(f"Added edge: {person_id} -> {latitude}, {longitude}")
 
-def add_best_interest_matches(graph: nx.Graph, person_id: str, query: str, topics_file_path: str, **kwargs):
+def add_best_interest_matches(graph: nx.Graph, person_id: str, phone_number: str, query: str, topics_file_path: str, **kwargs):
     """
     Finds the best matching interests for a query and adds them as edges to the person's node.
     
@@ -136,7 +137,7 @@ def add_best_interest_matches(graph: nx.Graph, person_id: str, query: str, topic
 
     for match in matches:
         interest_topic = match['topic']
-        add_interest_edge(graph, person_id, interest_topic)
+        add_interest_edge(graph, person_id, phone_number, interest_topic)
 
 # --- Example Usage ---
 if __name__ == "__main__":
