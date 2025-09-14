@@ -34,20 +34,10 @@ class AddPersonRequest(BaseModel):
     person_id: str
     query: str
 
-class AddPersonResponse(BaseModel):
-    success: bool
-    message: str
-    person_id: str
-
 class AddPersonWithPlaceRequest(BaseModel):
     person_id: str
     latitude: float
     longitude: float
-
-class AddPersonWithPlaceResponse(BaseModel):
-    success: bool
-    message: str
-    person_id: str
 
 @app.post("api/add_person_with_place", response_model=AddPersonWithPlaceResponse)
 async def add_person_with_place(request: AddPersonWithPlaceRequest):
@@ -59,11 +49,6 @@ async def add_person_with_place(request: AddPersonWithPlaceRequest):
         longitude=request.longitude
     )
     save_graph(people_graph, GRAPH_FILE)
-    return AddPersonWithPlaceResponse(
-        success=True,
-        message="Person added with place successfully",
-        person_id=request.person_id
-    )
 
 @app.post("/api/add_person_with_interest", response_model=AddPersonResponse)
 async def add_person_with_interest(request: AddPersonRequest):
@@ -85,12 +70,6 @@ async def add_person_with_interest(request: AddPersonRequest):
             score_threshold=0.4
         )
         save_graph(people_graph, GRAPH_FILE)
-        
-        return AddPersonResponse(
-            success=True,
-            message="Person added with interests successfully",
-            person_id=request.person_id
-        )
         
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Topics file not found: {TOPICS_FILE}")
